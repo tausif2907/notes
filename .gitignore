@@ -25,3 +25,8 @@ dist-ssr
 
 # Local tooling
 .claude/
+
+# Type-check output
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
