@@ -5,6 +5,15 @@ import { SHEET_MARGIN, SHEET_WIDTH } from "./sheet";
 export const MIN_ZOOM = 0.2;
 export const MAX_ZOOM = 5;
 
+/** Eraser size on screen, in pixels from the pointer. */
+export const ERASER_RADIUS = 8;
+
+/** A round cursor the size of the eraser. */
+const ERASER_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='${2 * ERASER_RADIUS + 2}' height='${2 * ERASER_RADIUS + 2}'>` +
+    `<circle cx='${ERASER_RADIUS + 1}' cy='${ERASER_RADIUS + 1}' r='${ERASER_RADIUS}' fill='white' fill-opacity='0.7' stroke='#2b2a27' stroke-width='1.5'/></svg>`,
+)}") ${ERASER_RADIUS + 1} ${ERASER_RADIUS + 1}, crosshair`;
+
 let activeCanvas: Canvas | null = null;
 let onViewportChange: ((vpt: TMat2D) => void) | null = null;
 
@@ -106,7 +115,8 @@ export function attachViewport(canvas: Canvas, host: HTMLElement) {
   const updateCursor = () => {
     const tool = useAppStore.getState().tool;
     const pan = tool === "hand" || spaceHeld;
-    const cursor = tool === "text" ? "text" : tool === "select" ? "default" : "crosshair";
+    const cursor =
+      tool === "text" ? "text" : tool === "select" ? "default" : tool === "eraser" ? ERASER_CURSOR : "crosshair";
     canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : cursor;
     canvas.selection = !pan && tool === "select";
     canvas.isDrawingMode = !pan && (tool === "pen" || tool === "highlighter");

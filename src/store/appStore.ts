@@ -15,7 +15,8 @@ export type Tool =
   | "bubble"
   | "image"
   | "pen"
-  | "highlighter";
+  | "highlighter"
+  | "eraser";
 
 export type DrawingTool = "pen" | "highlighter";
 

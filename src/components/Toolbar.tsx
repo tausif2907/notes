@@ -1,4 +1,5 @@
 import {
+  Eraser,
   Hand,
   Highlighter,
   Image,
@@ -30,6 +31,7 @@ const TOOLS: ToolDef[] = [
   { id: "image", label: "Image", shortcut: "I", icon: Image },
   { id: "pen", label: "Pen", shortcut: "P", icon: PenLine },
   { id: "highlighter", label: "Highlighter", shortcut: "M", icon: Highlighter },
+  { id: "eraser", label: "Eraser", shortcut: "E", icon: Eraser },
 ];
 
 /** Groups get a divider before them: navigate, add items, draw. */

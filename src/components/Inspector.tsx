@@ -173,6 +173,17 @@ function InspectorContent() {
 
   if (tool === "pen" || tool === "highlighter") return <DrawingOptions kind={tool} />;
 
+  if (tool === "eraser") {
+    return (
+      <Section title="Eraser">
+        <p className="hint">Drag over pen and highlighter lines to erase them. Notes, text and images are not affected.</p>
+        <p className="hint">
+          Press <kbd>Ctrl Z</kbd> to bring back what you erased, or <kbd>Esc</kbd> to stop erasing.
+        </p>
+      </Section>
+    );
+  }
+
   if (!selection) {
     return (
       <Section title="Style">

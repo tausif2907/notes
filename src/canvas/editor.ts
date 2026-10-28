@@ -3,6 +3,7 @@ import {
   FabricText,
   IText,
   InteractiveFabricObject,
+  Path,
   PencilBrush,
   Point,
   util,
@@ -24,7 +25,7 @@ import { NOTE_PRESETS, NoteText, type NoteKind } from "./noteText";
 import { session } from "./session";
 import { keepInside } from "./sheet";
 import { publishSelection, toggleTextStyle } from "./styling";
-import { isPanning, resetView } from "./viewport";
+import { ERASER_RADIUS, isPanning, resetView } from "./viewport";
 
 const ACCENT = "#6366f1";
 const DUPLICATE_OFFSET = 20;
@@ -314,6 +315,53 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     }
     keepInside(path);
     history.record();
+  });
+
+  // Eraser: drag over pen and highlighter strokes to remove them, whole
+  // stroke at a time. Hits are pixel-accurate; notes and images are never
+  // erased. One drag is one undo step.
+  let erasing = false;
+  let erasedAny = false;
+  let lastErase: Point | null = null;
+  const eraseAt = (at: Point) => {
+    const radius = ERASER_RADIUS / canvas.getZoom();
+    const scene = at.transform(util.invertTransform(canvas.viewportTransform));
+    for (const obj of canvas.getObjects()) {
+      if (!(obj instanceof Path)) continue;
+      const box = obj.getBoundingRect();
+      const near =
+        scene.x > box.left - radius && scene.x < box.left + box.width + radius &&
+        scene.y > box.top - radius && scene.y < box.top + box.height + radius;
+      if (near && !canvas.isTargetTransparent(obj, at.x, at.y)) {
+        canvas.remove(obj);
+        erasedAny = true;
+      }
+    }
+  };
+  // Fast drags jump between pointer events, so test the points in between.
+  const eraseAlong = (to: Point) => {
+    const from = lastErase ?? to;
+    const steps = Math.max(1, Math.ceil(from.distanceFrom(to) / ERASER_RADIUS));
+    for (let i = 1; i <= steps; i++) eraseAt(from.lerp(to, i / steps));
+    lastErase = to;
+    canvas.requestRenderAll();
+  };
+  canvas.on("mouse:down", ({ e }) => {
+    if (store().tool !== "eraser" || isPanning()) return;
+    erasing = true;
+    erasedAny = false;
+    lastErase = null;
+    canvas.setTargetFindTolerance(ERASER_RADIUS);
+    eraseAlong(canvas.getViewportPoint(e));
+  });
+  canvas.on("mouse:move", ({ e }) => {
+    if (erasing) eraseAlong(canvas.getViewportPoint(e));
+  });
+  canvas.on("mouse:up", () => {
+    if (!erasing) return;
+    erasing = false;
+    canvas.setTargetFindTolerance(0);
+    if (erasedAny) history.record();
   });
 
   canvas.on("object:moving", ({ target }) => keepInside(target));
