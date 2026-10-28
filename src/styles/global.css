@@ -11,12 +11,56 @@
   --desk: #e4e1da;
   --page-break: rgba(99, 102, 241, 0.28);
   --shadow: 0 4px 16px rgba(30, 28, 24, 0.08), 0 1px 3px rgba(30, 28, 24, 0.06);
+  --hover: rgba(0, 0, 0, 0.05);
+  --border-strong: #cfcbc2;
+  --notice-bg: #2b2a27;
+  color-scheme: light;
 
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dark theme: follows Windows unless Light or Dark is chosen in the app.
+   The sheet keeps its paper colour, like paper on a dark desk. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1c1f;
+    --surface: #26262a;
+    --sidebar: #202023;
+    --border: #3a3a40;
+    --border-strong: #4c4c54;
+    --text: #ecebe8;
+    --text-muted: #a3a19b;
+    --accent: #8b8ef8;
+    --accent-soft: rgba(139, 142, 248, 0.18);
+    --desk: #141416;
+    --page-break: rgba(139, 142, 248, 0.4);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --hover: rgba(255, 255, 255, 0.07);
+    --notice-bg: #3a3a40;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1c1c1f;
+  --surface: #26262a;
+  --sidebar: #202023;
+  --border: #3a3a40;
+  --border-strong: #4c4c54;
+  --text: #ecebe8;
+  --text-muted: #a3a19b;
+  --accent: #8b8ef8;
+  --accent-soft: rgba(139, 142, 248, 0.18);
+  --desk: #141416;
+  --page-break: rgba(139, 142, 248, 0.4);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --hover: rgba(255, 255, 255, 0.07);
+  --notice-bg: #3a3a40;
+  color-scheme: dark;
 }
 
 * {
@@ -100,7 +144,7 @@ h1.board-title:hover {
 
 .header-button:hover,
 .header-button.active {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover);
 }
 
 .popover-root {
@@ -147,6 +191,46 @@ h1.board-title:hover {
   color: var(--accent);
 }
 
+.sticker-popover {
+  left: 0;
+  right: auto;
+  width: 292px;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+}
+
+.emoji-grid button {
+  height: 40px;
+  border-radius: 8px;
+  font-size: 24px;
+}
+
+.emoji-grid button:hover {
+  background: var(--hover);
+}
+
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-list button {
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #2b2a27;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge-list button:hover {
+  filter: brightness(0.95);
+}
+
 .history-controls {
   display: flex;
   gap: 2px;
@@ -161,7 +245,7 @@ h1.board-title:hover {
 }
 
 .history-controls button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover);
 }
 
 .history-controls button:disabled {
@@ -172,6 +256,7 @@ h1.board-title:hover {
 .stage {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -311,7 +396,7 @@ h1.board-title:hover {
 
 .nav-link:hover,
 .board-link:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--hover);
 }
 
 .nav-link.active,
@@ -367,7 +452,7 @@ h1.board-title:hover {
 }
 
 .board-menu-trigger:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -397,7 +482,7 @@ h1.board-title:hover {
 }
 
 .menu button:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover);
 }
 
 .menu button.danger {
@@ -521,7 +606,7 @@ h1.board-title:hover {
 }
 
 .board-card:hover {
-  border-color: #cfcbc2;
+  border-color: var(--border-strong);
   box-shadow: var(--shadow);
 }
 
@@ -603,6 +688,46 @@ h1.board-title:hover {
   margin: 16px 0 20px;
 }
 
+.templates-dialog {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.template-card:hover:not(:disabled) {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.template-card .thumbnail {
+  margin-bottom: 4px;
+}
+
+.template-card strong {
+  font-size: 14px;
+}
+
+.template-card > span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .format-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -672,24 +797,29 @@ h1.board-title:hover {
   color: var(--text-muted);
 }
 
-/* Floating toolbar */
+/* Toolbar strip above the board */
 
-.toolbar-dock {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+.toolbar-row {
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 5px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
 }
 
 .toolbar-slot {
@@ -714,7 +844,7 @@ h1.board-title:hover {
 }
 
 .tool-button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover);
 }
 
 .tool-button.active {
@@ -730,17 +860,12 @@ h1.board-title:hover {
 /* Style panel */
 
 .inspector {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 248px;
+  width: 264px;
+  flex-shrink: 0;
   overflow-y: auto;
-  max-height: calc(100% - 88px);
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 4px 14px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  border-left: 1px solid var(--border);
   user-select: none;
 }
 
@@ -816,7 +941,7 @@ h1.board-title:hover {
 }
 
 .icon-button:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover);
 }
 
 .icon-button.active {
@@ -975,7 +1100,7 @@ kbd {
   max-width: min(480px, calc(100% - 32px));
   padding: 10px 16px;
   border-radius: 10px;
-  background: #2b2a27;
+  background: var(--notice-bg);
   color: #ffffff;
   font-size: 13px;
   box-shadow: var(--shadow);
@@ -983,20 +1108,9 @@ kbd {
 
 /* Zoom controls */
 
-.status-dock {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-}
-
 .zoom-controls {
   display: flex;
   align-items: center;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
 }
 
 .zoom-controls button {
@@ -1008,11 +1122,21 @@ kbd {
 }
 
 .zoom-controls button:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover);
 }
 
 .zoom-value {
   width: 52px;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
+}
+
+.theme-switch {
+  margin-bottom: 6px;
+}
+
+.theme-switch button {
+  display: grid;
+  place-items: center;
+  height: 26px;
 }

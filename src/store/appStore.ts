@@ -3,6 +3,8 @@ import { nanoid } from "nanoid";
 import type { Board } from "../types/board";
 import type { SelectionInfo } from "../canvas/styling";
 import * as persistence from "../db/persistence";
+import { findTemplate } from "../templates";
+import { INK } from "../theme";
 
 export type Tool =
   | "select"
@@ -14,6 +16,11 @@ export type Tool =
   | "image"
   | "pen"
   | "highlighter";
+
+export type DrawingTool = "pen" | "highlighter";
+
+/** "system" follows the Windows light/dark setting. */
+export type ThemeChoice = "system" | "light" | "dark";
 
 export interface ConfirmRequest {
   title: string;
@@ -36,7 +43,14 @@ interface AppState {
   /** Short message shown briefly at the bottom of the board. */
   notice: { id: number; text: string } | null;
   confirm: ConfirmRequest | null;
+  drawing: Record<DrawingTool, { color: string; size: number }>;
+  theme: ThemeChoice;
+  setTheme: (theme: ThemeChoice) => void;
+  /** Whether the style panel is shown beside the board. */
+  panelOpen: boolean;
+  setPanelOpen: (open: boolean) => void;
   init: () => Promise<void>;
+  setDrawing: (tool: DrawingTool, patch: Partial<{ color: string; size: number }>) => void;
   setView: (view: AppState["view"]) => void;
   setTool: (tool: Tool) => void;
   setZoom: (zoom: number) => void;
@@ -45,7 +59,10 @@ interface AppState {
   showNotice: (text: string) => void;
   clearNotice: (id: number) => void;
   askConfirm: (request: ConfirmRequest | null) => void;
-  createBoard: () => void;
+  /** True while the "new board" template picker is open. */
+  showTemplates: boolean;
+  setShowTemplates: (show: boolean) => void;
+  createBoard: (templateId?: string) => Promise<void>;
   selectBoard: (id: string) => void;
   /** Changes board details; `touch` also marks the board as just edited. */
   updateBoard: (id: string, patch: Partial<Omit<Board, "id">>, touch?: boolean) => void;
@@ -56,23 +73,35 @@ interface AppState {
 }
 
 const LAST_BOARD_KEY = "stickyboard:lastBoardId";
+const THEME_KEY = "stickyboard:theme";
+const PANEL_KEY = "stickyboard:panel";
 
 let initOnce: Promise<void> | undefined;
 
-function rememberBoard(id: string) {
+// Small per-computer preferences. Storage can be unavailable, in which case
+// the app simply uses its defaults.
+function remember(key: string, value: string) {
   try {
-    localStorage.setItem(LAST_BOARD_KEY, id);
+    localStorage.setItem(key, value);
   } catch {
-    // Only a convenience; the first board opens instead.
+    // Not saved; the default is used next time.
   }
 }
 
-function lastBoardId() {
+function recall(key: string) {
   try {
-    return localStorage.getItem(LAST_BOARD_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
+}
+
+const rememberBoard = (id: string) => remember(LAST_BOARD_KEY, id);
+const lastBoardId = () => recall(LAST_BOARD_KEY);
+
+function savedTheme(): ThemeChoice {
+  const value = recall(THEME_KEY);
+  return value === "light" || value === "dark" ? value : "system";
 }
 
 function newBoard(title: string): Board {
@@ -100,6 +129,24 @@ export const useAppStore = create<AppState>((set, get) => {
     selection: null,
     notice: null,
     confirm: null,
+    showTemplates: false,
+    setShowTemplates: (showTemplates) => set({ showTemplates }),
+    theme: savedTheme(),
+    setTheme: (theme) => {
+      remember(THEME_KEY, theme);
+      set({ theme });
+    },
+    panelOpen: recall(PANEL_KEY) !== "closed",
+    setPanelOpen: (panelOpen) => {
+      remember(PANEL_KEY, panelOpen ? "open" : "closed");
+      set({ panelOpen });
+    },
+    drawing: {
+      pen: { color: INK, size: 4 },
+      highlighter: { color: "#fff176", size: 20 },
+    },
+    setDrawing: (tool, patch) =>
+      set((s) => ({ drawing: { ...s.drawing, [tool]: { ...s.drawing[tool], ...patch } } })),
 
     // Runs once even if called twice (React mounts twice in development).
     init: () =>
@@ -126,11 +173,20 @@ export const useAppStore = create<AppState>((set, get) => {
     clearNotice: (id) => set((s) => (s.notice?.id === id ? { notice: null } : {})),
     askConfirm: (confirm) => set({ confirm }),
 
-    createBoard: () => {
-      const board = newBoard(`Untitled board ${get().boards.length + 1}`);
-      set((s) => ({ boards: [board, ...s.boards], activeBoardId: board.id, view: "board" }));
+    createBoard: async (templateId = "blank") => {
+      const template = findTemplate(templateId);
+      const title = template.id === "blank" ? `Untitled board ${get().boards.length + 1}` : template.name;
+      const board = { ...newBoard(title), background: template.background, paper: template.paper };
+      const objects = template.build();
+      // Write the content first so the board opens with its template items.
+      await persist(
+        (async () => {
+          await persistence.putBoard(board);
+          if (objects.length > 0) await persistence.saveContent(board.id, { objects });
+        })(),
+      );
+      set((s) => ({ boards: [board, ...s.boards], activeBoardId: board.id, view: "board", showTemplates: false }));
       rememberBoard(board.id);
-      void persist(persistence.putBoard(board));
     },
 
     selectBoard: (id) => {
@@ -176,7 +232,7 @@ export const useAppStore = create<AppState>((set, get) => {
       const remaining = get().boards.filter((b) => b.id !== id);
       if (remaining.length === 0) {
         set({ boards: [] });
-        get().createBoard();
+        await get().createBoard();
         return;
       }
       const active = get().activeBoardId === id ? remaining[0].id : get().activeBoardId;

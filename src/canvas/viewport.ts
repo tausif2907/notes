@@ -35,9 +35,27 @@ function notify(canvas: Canvas) {
   useAppStore.getState().setZoom(canvas.getZoom());
 }
 
-/** Re-applies the sheet limits after the window or panel size changes. */
+/** True until the user zooms; while true the sheet keeps fitting the width. */
+let fitWidth = true;
+
+/** Zoom that fits the whole sheet width on screen, at most 100%. */
+const fittingZoom = (canvas: Canvas) =>
+  clampZoom(Math.min(1, (canvas.getWidth() - 2 * SHEET_MARGIN) / SHEET_WIDTH));
+
+/**
+ * After the window or style panel changes size: re-fit the sheet (unless
+ * the user chose a zoom), keeping the same part of the sheet at the top.
+ */
 export function viewportResized() {
-  if (activeCanvas) notify(activeCanvas);
+  const canvas = activeCanvas;
+  if (!canvas) return;
+  if (fitWidth) {
+    const vpt = canvas.viewportTransform;
+    const topOfView = (SHEET_MARGIN - vpt[5]) / vpt[0];
+    const zoom = fittingZoom(canvas);
+    canvas.setViewportTransform([zoom, 0, 0, zoom, 0, SHEET_MARGIN - topOfView * zoom]);
+  }
+  notify(canvas);
 }
 
 /** Zoom by a factor, keeping the given screen point fixed (defaults to centre). */
@@ -46,6 +64,7 @@ export function zoomBy(factor: number, at?: Point) {
   if (!canvas) return;
   const point = at ?? new Point(canvas.getWidth() / 2, canvas.getHeight() / 2);
   canvas.zoomToPoint(point, clampZoom(canvas.getZoom() * factor));
+  fitWidth = false;
   notify(canvas);
 }
 
@@ -53,8 +72,9 @@ export function zoomBy(factor: number, at?: Point) {
 export function resetView() {
   const canvas = activeCanvas;
   if (!canvas) return;
-  const zoom = clampZoom(Math.min(1, (canvas.getWidth() - 2 * SHEET_MARGIN) / SHEET_WIDTH));
+  const zoom = fittingZoom(canvas);
   canvas.setViewportTransform([zoom, 0, 0, zoom, 0, SHEET_MARGIN]);
+  fitWidth = true;
   notify(canvas);
 }
 
@@ -89,6 +109,7 @@ export function attachViewport(canvas: Canvas, host: HTMLElement) {
     const cursor = tool === "text" ? "text" : tool === "select" ? "default" : "crosshair";
     canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : cursor;
     canvas.selection = !pan && tool === "select";
+    canvas.isDrawingMode = !pan && (tool === "pen" || tool === "highlighter");
     // Panning and placing new items must not grab or drag existing ones.
     canvas.skipTargetFind = pan || (tool !== "select" && tool !== "text");
     canvas.setCursor(canvas.defaultCursor);

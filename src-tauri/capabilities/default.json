@@ -9,6 +9,7 @@
     "core:default",
     "opener:default",
     "core:window:allow-destroy",
+    "core:window:allow-set-theme",
     "dialog:default",
     "fs:allow-write-file",
     "fs:allow-read-file"

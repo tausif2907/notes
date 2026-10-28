@@ -1,7 +1,9 @@
 import {
   ActiveSelection,
+  FabricText,
   IText,
   InteractiveFabricObject,
+  PencilBrush,
   Point,
   util,
   type Canvas,
@@ -12,6 +14,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { loadContent } from "../db/persistence";
 import { useAppStore, type Tool } from "../store/appStore";
+import { EMOJI_FONT } from "../theme";
 import { prepareImageBlob, registerAsset } from "./assets";
 import { flushSave, scheduleSave } from "./autosave";
 import { croppingImage, finishCrop, onCropChange, startCrop } from "./crop";
@@ -46,6 +49,12 @@ const CREATE_TOOLS: Partial<Record<Tool, NoteKind>> = {
   textbox: "box",
   bubble: "bubble",
 };
+
+/** "#rrggbb" to "rgba(r, g, b, alpha)". */
+function withAlpha(hex: string, alpha: number) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
 
 const isEditingText = (obj: FabricObject | undefined): obj is IText =>
   obj instanceof IText && obj.isEditing;
@@ -88,6 +97,41 @@ export async function insertImages(files: Blob[], at?: Point) {
   canvas.setActiveObject(added.length === 1 ? added[0] : new ActiveSelection(added, { canvas }));
   canvas.requestRenderAll();
   session.history?.record();
+}
+
+/** Adds an item in the middle of the view, selected, as one undo step. */
+function placeInView(obj: FabricObject) {
+  const canvas = session.canvas;
+  if (!canvas) return;
+  settle();
+  obj.setPositionByOrigin(canvas.getVpCenter(), "center", "center");
+  canvas.add(obj);
+  canvas.setActiveObject(obj);
+  canvas.requestRenderAll();
+  useAppStore.getState().setTool("select");
+  session.history?.record();
+}
+
+export function addEmoji(emoji: string) {
+  placeInView(new FabricText(emoji, { fontSize: 72, fontFamily: EMOJI_FONT, originX: "left", originY: "top" }));
+}
+
+/** A coloured pill label such as "TO DO"; it stays editable like any text. */
+export function addBadge({ text, fill }: { text: string; fill: string }) {
+  const badge = new NoteText(text, {
+    ...NOTE_PRESETS.box,
+    cardFill: fill,
+    cardStroke: "",
+    cardStrokeWidth: 0,
+    cornerRadius: 28,
+    cardPadding: 10,
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  });
+  // Shrink the pill to fit its word.
+  badge.set({ width: badge.getLineWidth(0) + 2 * badge.cardPadding + 4 });
+  placeInView(badge);
 }
 
 /** Opens the system file picker for images. */
@@ -247,6 +291,31 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   });
   // Items always stay on the sheet: while dragging, after resizing or
   // rotating, and when added (which also pulls in items from older boards).
+  // Pen and highlighter: the brush follows the chosen colour and size.
+  // Highlighter strokes multiply with what is underneath, like a real
+  // marker, so text under them stays readable.
+  const applyBrush = () => {
+    const { tool, drawing } = store();
+    if (tool !== "pen" && tool !== "highlighter") return;
+    const { color, size } = drawing[tool];
+    const brush = new PencilBrush(canvas);
+    brush.width = size;
+    brush.decimate = 2;
+    brush.strokeLineCap = "round";
+    brush.strokeLineJoin = "round";
+    // While drawing, a see-through preview; the finished stroke multiplies.
+    brush.color = tool === "highlighter" ? withAlpha(color, 0.55) : color;
+    canvas.freeDrawingBrush = brush;
+  };
+  applyBrush();
+  canvas.on("path:created", ({ path }) => {
+    if (store().tool === "highlighter") {
+      path.set({ stroke: store().drawing.highlighter.color, globalCompositeOperation: "multiply" });
+    }
+    keepInside(path);
+    history.record();
+  });
+
   canvas.on("object:moving", ({ target }) => keepInside(target));
   canvas.on("object:added", ({ target }) => {
     if (!target.excludeFromExport) keepInside(target);
@@ -283,6 +352,7 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     }
     if (e.key === "Escape") {
       if (isEditingText(active)) active.exitEditing();
+      else if (store().tool !== "select") store().setTool("select");
       else canvas.discardActiveObject();
       canvas.requestRenderAll();
       return;
@@ -359,6 +429,7 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   host.addEventListener("drop", onDrop);
 
   const unsubscribe = useAppStore.subscribe((s, prev) => {
+    if (s.tool !== prev.tool || s.drawing !== prev.drawing) applyBrush();
     // The Image tool opens the file picker, then hands back to Select.
     if (s.tool === "image" && prev.tool !== "image") {
       s.setTool("select");

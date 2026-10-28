@@ -19,6 +19,22 @@ export const TEXT_COLORS = [
 /** Marker-pen highlight colours; "" removes the highlight. */
 export const HIGHLIGHTS = ["", "#fff176", "#b9f6ca", "#ffccbc", "#f8bbd0", "#b3e5fc", "#e1bee7"];
 
+export const PEN_COLORS = TEXT_COLORS.slice(0, 8);
+
+export const PEN_SIZES = [
+  { label: "Fine", value: 2 },
+  { label: "Medium", value: 4 },
+  { label: "Bold", value: 8 },
+];
+
+export const HIGHLIGHTER_COLORS = HIGHLIGHTS.filter(Boolean);
+
+export const HIGHLIGHTER_SIZES = [
+  { label: "Thin", value: 12 },
+  { label: "Medium", value: 20 },
+  { label: "Wide", value: 32 },
+];
+
 export const CARD_FILLS = [
   "#fff1a8", "#ffd6a5", "#ffc8dd", "#cdeac0", "#bde0fe", "#e2cfff", "#ffffff", "#f1f0ec",
 ];
@@ -42,6 +58,23 @@ export const IMAGE_CORNERS = [
   { label: "Square", value: 0 },
   { label: "Rounded", value: 16 },
   { label: "Round", value: 40 },
+];
+
+export const EMOJI_FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+
+export const EMOJI_STICKERS = [
+  "⭐", "❤️", "✅", "❌", "⚠️", "💡", "📌", "📎", "🔥", "🎉",
+  "👍", "👀", "😊", "😂", "😍", "🤔", "😴", "😎", "📅", "⏰",
+  "📚", "✏️", "🎯", "🚀", "☕", "🌈", "✨", "🍀", "🎵", "🏆",
+];
+
+export const BADGE_STICKERS = [
+  { text: "TO DO", fill: "#ffd6a5" },
+  { text: "DONE", fill: "#cdeac0" },
+  { text: "IMPORTANT", fill: "#ffc8dd" },
+  { text: "IDEA", fill: "#fff1a8" },
+  { text: "QUESTION", fill: "#bde0fe" },
+  { text: "URGENT", fill: "#ff9e95" },
 ];
 
 export const PAPERS = {

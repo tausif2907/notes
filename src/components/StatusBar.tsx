@@ -1,12 +1,22 @@
-import { Maximize, Minus, Plus } from "lucide-react";
+import { Maximize, Minus, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 import { useAppStore } from "../store/appStore";
 import { resetView, zoomBy } from "../canvas/viewport";
 
 export function StatusBar() {
   const zoom = useAppStore((s) => s.zoom);
+  const panelOpen = useAppStore((s) => s.panelOpen);
+  const setPanelOpen = useAppStore((s) => s.setPanelOpen);
 
   return (
     <div className="zoom-controls">
+      <button
+        title={panelOpen ? "Hide style panel (more room for the board)" : "Show style panel"}
+        aria-label={panelOpen ? "Hide style panel" : "Show style panel"}
+        aria-pressed={panelOpen}
+        onClick={() => setPanelOpen(!panelOpen)}
+      >
+        {panelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+      </button>
       <button title="Zoom out (Ctrl -)" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.2)}>
         <Minus size={16} />
       </button>

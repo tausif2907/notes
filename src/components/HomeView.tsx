@@ -17,7 +17,7 @@ function editedLabel(time: number) {
 /** Grid of every board with previews, search and board actions. */
 export function HomeView() {
   const boards = useAppStore((s) => s.boards);
-  const createBoard = useAppStore((s) => s.createBoard);
+  const setShowTemplates = useAppStore((s) => s.setShowTemplates);
   const selectBoard = useAppStore((s) => s.selectBoard);
   const updateBoard = useAppStore((s) => s.updateBoard);
   const [query, setQuery] = useState("");
@@ -42,7 +42,7 @@ export function HomeView() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <button className="primary-button" onClick={createBoard}>
+        <button className="primary-button" onClick={() => setShowTemplates(true)}>
           <Plus size={16} /> New board
         </button>
       </header>

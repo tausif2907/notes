@@ -9,6 +9,7 @@ import { Inspector } from "./components/Inspector";
 import { Notice } from "./components/Notice";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
+import { TemplatePicker } from "./components/TemplatePicker";
 import { TitleInput } from "./components/TitleInput";
 import { Toolbar, TOOL_SHORTCUTS } from "./components/Toolbar";
 import { useAppStore } from "./store/appStore";
@@ -16,6 +17,7 @@ import { useAppStore } from "./store/appStore";
 export default function App() {
   const ready = useAppStore((s) => s.ready);
   const view = useAppStore((s) => s.view);
+  const panelOpen = useAppStore((s) => s.panelOpen);
   const board = useAppStore((s) => s.boards.find((b) => b.id === s.activeBoardId));
   const updateBoard = useAppStore((s) => s.updateBoard);
   const [renaming, setRenaming] = useState(false);
@@ -75,21 +77,24 @@ export default function App() {
             <HistoryControls />
           </div>
         </header>
-        <div className="stage">
-          <CanvasView />
-          <div className="toolbar-dock">
-            <Toolbar />
+        {/* Tools, board and style panel each get their own space, so
+            nothing ever covers the notes on the sheet. */}
+        <div className="toolbar-row">
+          <Toolbar />
+          <StatusBar />
+        </div>
+        <div className="workspace-body">
+          <div className="stage">
+            <CanvasView />
+            <Notice />
           </div>
-          <Inspector />
-          <Notice />
-          <div className="status-dock">
-            <StatusBar />
-          </div>
+          {panelOpen && <Inspector />}
         </div>
         {/* The board stays mounted underneath so switching back is instant. */}
         {view === "home" && <HomeView />}
       </main>
       <ConfirmDialog />
+      <TemplatePicker />
     </div>
   );
 }

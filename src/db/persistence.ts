@@ -20,9 +20,9 @@ export const patchBoard = (id: string, patch: Partial<Board>) => db.boards.updat
  * Saves a board's canvas JSON. Image sources are object URLs that only live
  * for this session, so they are blanked and the image files saved by id.
  */
-export async function saveContent(boardId: string, canvasJson: { objects: SerializedObject[] }) {
+export async function saveContent(boardId: string, canvasJson: { objects: object[] }) {
   const assetIds = new Set<string>();
-  const objects = canvasJson.objects.map((obj) => {
+  const objects = (canvasJson.objects as SerializedObject[]).map((obj) => {
     if (!obj.assetId) return obj;
     assetIds.add(obj.assetId);
     return { ...obj, src: "" };

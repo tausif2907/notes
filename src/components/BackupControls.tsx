@@ -4,6 +4,7 @@ import { flushSave } from "../canvas/autosave";
 import { createBackup, restoreBackup } from "../db/backup";
 import { BACKUP, openFile, saveFile } from "../platform/files";
 import { useAppStore } from "../store/appStore";
+import { ThemeSwitch } from "./ThemeSwitch";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -47,6 +48,7 @@ export function BackupControls() {
 
   return (
     <div className="backup-controls">
+      <ThemeSwitch />
       <button className="nav-link" onClick={backup} disabled={busy} title="Save all boards to one file">
         <HardDriveDownload size={16} />
         Back up all boards

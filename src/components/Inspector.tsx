@@ -16,7 +16,7 @@ import {
   Trash2,
   Underline,
 } from "lucide-react";
-import { useAppStore } from "../store/appStore";
+import { useAppStore, type DrawingTool } from "../store/appStore";
 import { finishCrop, startCrop } from "../canvas/crop";
 import { NoteImage } from "../canvas/noteImage";
 import { session } from "../canvas/session";
@@ -37,8 +37,12 @@ import {
   CORNERS,
   FONTS,
   FONT_SIZES,
+  HIGHLIGHTER_COLORS,
+  HIGHLIGHTER_SIZES,
   HIGHLIGHTS,
   IMAGE_CORNERS,
+  PEN_COLORS,
+  PEN_SIZES,
   TEXT_COLORS,
 } from "../theme";
 
@@ -122,33 +126,81 @@ function stepFontSize(current: number, direction: 1 | -1) {
   return next ?? current;
 }
 
-/** Style panel for the current selection. */
-export function Inspector() {
-  const selection = useAppStore((s) => s.selection);
-  if (!selection) return null;
-  const { text, card, image, textRange } = selection;
+/** Colour and thickness for the pen or highlighter while drawing. */
+function DrawingOptions({ kind }: { kind: DrawingTool }) {
+  const { color, size } = useAppStore((s) => s.drawing[kind]);
+  const setDrawing = useAppStore((s) => s.setDrawing);
+  const pen = kind === "pen";
+  return (
+    <Section title={pen ? "Pen" : "Highlighter"}>
+      <h3>Colour</h3>
+      <Swatches
+        colors={pen ? PEN_COLORS : HIGHLIGHTER_COLORS}
+        value={color}
+        onPick={(c) => setDrawing(kind, { color: c })}
+      />
+      <h3>Thickness</h3>
+      <div className="segmented">
+        {(pen ? PEN_SIZES : HIGHLIGHTER_SIZES).map(({ label, value }) => (
+          <button key={value} className={size === value ? "active" : ""} onClick={() => setDrawing(kind, { size: value })}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="hint">
+        Draw anywhere on the sheet. Press <kbd>Esc</kbd> or <kbd>V</kbd> to stop drawing.
+      </p>
+    </Section>
+  );
+}
 
-  if (selection.cropping) {
+/**
+ * Style panel, docked beside the board so it never covers notes. It is
+ * always shown (so the board does not shift when you select something).
+ */
+export function Inspector() {
+  return (
+    // Keeping focus on the canvas means styling never interrupts typing.
+    <aside className="inspector" aria-label="Style" onMouseDown={(e) => e.preventDefault()}>
+      <InspectorContent />
+    </aside>
+  );
+}
+
+function InspectorContent() {
+  const selection = useAppStore((s) => s.selection);
+  const tool = useAppStore((s) => s.tool);
+
+  if (tool === "pen" || tool === "highlighter") return <DrawingOptions kind={tool} />;
+
+  if (!selection) {
     return (
-      <aside className="inspector" onMouseDown={(e) => e.preventDefault()}>
-        <Section title="Crop">
-          <p className="hint">Drag the black handles to trim the image. The faded part will be cut off.</p>
-          <div className="row">
-            <button className="secondary-button" onClick={() => finishCrop(false)}>
-              Cancel <kbd>Esc</kbd>
-            </button>
-            <button className="primary-button" onClick={() => finishCrop(true)}>
-              <Check size={15} /> Done <kbd>Enter</kbd>
-            </button>
-          </div>
-        </Section>
-      </aside>
+      <Section title="Style">
+        <p className="hint">Select a note, text or image to change how it looks.</p>
+        <p className="hint">Tip: select words while typing to highlight or colour just those words.</p>
+      </Section>
     );
   }
 
+  if (selection.cropping) {
+    return (
+      <Section title="Crop">
+        <p className="hint">Drag the black handles to trim the image. The faded part will be cut off.</p>
+        <div className="row">
+          <button className="secondary-button" onClick={() => finishCrop(false)}>
+            Cancel <kbd>Esc</kbd>
+          </button>
+          <button className="primary-button" onClick={() => finishCrop(true)}>
+            <Check size={15} /> Done <kbd>Enter</kbd>
+          </button>
+        </div>
+      </Section>
+    );
+  }
+
+  const { text, card, image, textRange } = selection;
   return (
-    // Keeping focus on the canvas means styling never interrupts typing.
-    <aside className="inspector" onMouseDown={(e) => e.preventDefault()}>
+    <>
       {image && (
         <Section title="Image">
           <button className="secondary-button" onClick={startCropOnSelection}>
@@ -332,6 +384,6 @@ export function Inspector() {
           </IconButton>
         </div>
       </Section>
-    </aside>
+    </>
   );
 }

@@ -11,14 +11,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAppStore, type Tool } from "../store/appStore";
+import { StickerPicker } from "./StickerPicker";
 
 interface ToolDef {
   id: Tool;
   label: string;
   shortcut: string;
   icon: LucideIcon;
-  /** Phase in which the tool gets wired up; undefined means it works now. */
-  comingIn?: number;
 }
 
 const TOOLS: ToolDef[] = [
@@ -29,12 +28,15 @@ const TOOLS: ToolDef[] = [
   { id: "textbox", label: "Text box", shortcut: "B", icon: RectangleHorizontal },
   { id: "bubble", label: "Speech bubble", shortcut: "U", icon: MessageCircle },
   { id: "image", label: "Image", shortcut: "I", icon: Image },
-  { id: "pen", label: "Pen", shortcut: "P", icon: PenLine, comingIn: 6 },
-  { id: "highlighter", label: "Highlighter", shortcut: "M", icon: Highlighter, comingIn: 6 },
+  { id: "pen", label: "Pen", shortcut: "P", icon: PenLine },
+  { id: "highlighter", label: "Highlighter", shortcut: "M", icon: Highlighter },
 ];
 
+/** Groups get a divider before them: navigate, add items, draw. */
+const DIVIDER_BEFORE = new Set<Tool>(["text", "pen"]);
+
 export const TOOL_SHORTCUTS = Object.fromEntries(
-  TOOLS.filter((t) => !t.comingIn).map((t) => [t.shortcut.toLowerCase(), t.id]),
+  TOOLS.map((t) => [t.shortcut.toLowerCase(), t.id]),
 ) as Record<string, Tool>;
 
 export function Toolbar() {
@@ -43,21 +45,21 @@ export function Toolbar() {
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Tools">
-      {TOOLS.map(({ id, label, shortcut, icon: Icon, comingIn }, i) => (
+      {TOOLS.map(({ id, label, shortcut, icon: Icon }) => (
         <span key={id} className="toolbar-slot">
-          {i === 2 && <span className="toolbar-divider" />}
+          {DIVIDER_BEFORE.has(id) && <span className="toolbar-divider" />}
           <button
             className={`tool-button${tool === id ? " active" : ""}`}
-            title={comingIn ? `${label} (coming in Phase ${comingIn})` : `${label} (${shortcut})`}
+            title={`${label} (${shortcut})`}
             aria-label={label}
             aria-pressed={tool === id}
-            disabled={comingIn !== undefined}
             onClick={() => setTool(id)}
           >
             <Icon size={18} strokeWidth={1.8} />
           </button>
         </span>
       ))}
+      <StickerPicker />
     </div>
   );
 }

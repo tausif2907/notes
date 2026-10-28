@@ -10,7 +10,7 @@ export function Sidebar() {
   const boards = useAppStore((s) => s.boards);
   const activeBoardId = useAppStore((s) => s.activeBoardId);
   const view = useAppStore((s) => s.view);
-  const createBoard = useAppStore((s) => s.createBoard);
+  const setShowTemplates = useAppStore((s) => s.setShowTemplates);
   const selectBoard = useAppStore((s) => s.selectBoard);
   const updateBoard = useAppStore((s) => s.updateBoard);
   const setView = useAppStore((s) => s.setView);
@@ -23,7 +23,7 @@ export function Sidebar() {
         <span>StickyBoard</span>
       </div>
 
-      <button className="new-board" onClick={createBoard}>
+      <button className="new-board" onClick={() => setShowTemplates(true)}>
         <Plus size={16} />
         New board
       </button>
