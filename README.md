@@ -29,11 +29,16 @@ npm run tauri build    # installer in src-tauri/target/release/bundle
 | Zoom | Ctrl + scroll, Ctrl +/-, or the zoom buttons |
 | Reset view | Ctrl 0 |
 | Select tool | V |
+| Add text | Text tool (T) then click, or double-click empty board |
+| Finish editing / deselect | Esc |
+| Delete | Delete or Backspace |
+| Duplicate / select all | Ctrl D / Ctrl A |
+| Undo / redo | Ctrl Z / Ctrl Y (or Ctrl Shift Z) |
 
 ## Roadmap
 
 1. **Phase 0, setup:** project scaffold, app shell, zoomable/pannable canvas ✅
-2. **Phase 1, core canvas:** text anywhere, select/move/resize/delete, undo/redo
+2. **Phase 1, core canvas:** text anywhere, select/move/resize/delete, undo/redo ✅
 3. **Phase 2, styling:** sticky notes, text boxes, bubbles, highlighting, colours, backgrounds
 4. **Phase 3, images:** paste, drag and drop, crop, corners, shadows
 5. **Phase 4, saving:** autosave to local database, board list with thumbnails
