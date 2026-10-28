@@ -1,6 +1,5 @@
 import {
   Eraser,
-  Hand,
   Highlighter,
   Image,
   MessageCircle,
@@ -23,7 +22,6 @@ interface ToolDef {
 
 const TOOLS: ToolDef[] = [
   { id: "select", label: "Select", shortcut: "V", icon: MousePointer2 },
-  { id: "hand", label: "Pan", shortcut: "H", icon: Hand },
   { id: "text", label: "Text", shortcut: "T", icon: Type },
   { id: "sticky", label: "Sticky note", shortcut: "S", icon: StickyNote },
   { id: "textbox", label: "Text box", shortcut: "B", icon: RectangleHorizontal },
@@ -34,7 +32,7 @@ const TOOLS: ToolDef[] = [
   { id: "eraser", label: "Eraser", shortcut: "E", icon: Eraser },
 ];
 
-/** Groups get a divider before them: navigate, add items, draw. */
+/** Groups get a divider before them: select, add items, draw. */
 const DIVIDER_BEFORE = new Set<Tool>(["text", "pen"]);
 
 export const TOOL_SHORTCUTS = Object.fromEntries(

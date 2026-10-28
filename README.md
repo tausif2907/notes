@@ -37,7 +37,7 @@ The app icon is generated from `src-tauri/app-icon.svg` with `npx tauri icon src
 
 | Action | How |
 |---|---|
-| Scroll / pan | Scroll wheel, hold Space and drag, middle-mouse drag, or the Pan tool (H) |
+| Scroll / pan | Scroll wheel, hold Space and drag, or middle-mouse drag |
 | Zoom | Ctrl + scroll, Ctrl +/-, or the zoom buttons |
 | Reset view | Ctrl 0 |
 | Select tool | V |

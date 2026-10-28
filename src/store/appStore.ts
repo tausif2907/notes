@@ -8,7 +8,6 @@ import { INK } from "../theme";
 
 export type Tool =
   | "select"
-  | "hand"
   | "text"
   | "sticky"
   | "textbox"

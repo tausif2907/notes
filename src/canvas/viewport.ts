@@ -95,8 +95,8 @@ export function paintBackground(host: HTMLElement, vpt: TMat2D) {
 }
 
 /**
- * Wheel to pan (Ctrl+wheel or pinch to zoom), and drag to pan with the
- * hand tool, a held Space key, or the middle mouse button.
+ * Wheel to pan (Ctrl+wheel or pinch to zoom), and drag to pan with a held
+ * Space key or the middle mouse button.
  */
 export function attachViewport(canvas: Canvas, host: HTMLElement) {
   activeCanvas = canvas;
@@ -107,14 +107,11 @@ export function attachViewport(canvas: Canvas, host: HTMLElement) {
   let panning = false;
   let last = { x: 0, y: 0 };
 
-  const wantsPan = (e: TPointerEvent) =>
-    useAppStore.getState().tool === "hand" ||
-    spaceHeld ||
-    ("button" in e && e.button === 1);
+  const wantsPan = (e: TPointerEvent) => spaceHeld || ("button" in e && e.button === 1);
 
   const updateCursor = () => {
     const tool = useAppStore.getState().tool;
-    const pan = tool === "hand" || spaceHeld;
+    const pan = spaceHeld;
     const cursor =
       tool === "text" ? "text" : tool === "select" ? "default" : tool === "eraser" ? ERASER_CURSOR : "crosshair";
     canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : cursor;
