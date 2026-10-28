@@ -8,6 +8,8 @@
   --accent: #6366f1;
   --accent-soft: #e8e8fd;
   --dot: #cfcbc2;
+  --desk: #e4e1da;
+  --page-break: rgba(99, 102, 241, 0.28);
   --shadow: 0 4px 16px rgba(30, 28, 24, 0.08), 0 1px 3px rgba(30, 28, 24, 0.06);
 
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
@@ -173,8 +175,9 @@ h1.board-title:hover {
   min-height: 0;
 }
 
-/* Board background: --zoom/--pan-x/--pan-y come from the viewport so the
-   pattern moves with the board; --paper/--mark come from the board. */
+/* Board: a desk with one long sheet of paper on it. --zoom/--pan-x/--pan-y
+   come from the viewport so the sheet moves with the board; --paper/--mark
+   come from the board's background settings. */
 .canvas-host {
   --zoom: 1;
   --pan-x: 0px;
@@ -182,25 +185,57 @@ h1.board-title:hover {
   --cell: calc(24px * var(--zoom));
   position: absolute;
   inset: 0;
-  background-color: var(--paper, var(--bg));
-  background-position: var(--pan-x) var(--pan-y);
-  background-size: var(--cell) var(--cell);
+  overflow: hidden;
+  background: var(--desk);
 }
 
-.canvas-host[data-pattern="dots"] {
+/* Starts at the sheet's top edge and runs past the bottom of the screen. */
+.sheet {
+  position: absolute;
+  left: var(--pan-x);
+  top: var(--pan-y);
+  bottom: 0;
+  width: calc(var(--sheet-width) * var(--zoom));
+  background-color: var(--paper, var(--bg));
+  background-size: var(--cell) var(--cell);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 6px 28px rgba(40, 35, 25, 0.1);
+}
+
+/* Faint lines where PDF pages will break (A4). */
+.sheet::after {
+  --page: calc(var(--page-height) * var(--zoom));
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    transparent 0,
+    transparent calc(var(--page) - 1px),
+    var(--page-break) calc(var(--page) - 1px),
+    var(--page-break) var(--page)
+  );
+}
+
+.canvas-host[data-pattern="dots"] .sheet {
   background-image: radial-gradient(circle, var(--mark, var(--dot)) 1.2px, transparent 1.4px);
 }
 
-.canvas-host[data-pattern="grid"] {
+.canvas-host[data-pattern="grid"] .sheet {
   background-image:
     linear-gradient(var(--mark) 1px, transparent 1px),
     linear-gradient(90deg, var(--mark) 1px, transparent 1px);
 }
 
-.canvas-host[data-pattern="lines"] {
+.canvas-host[data-pattern="lines"] .sheet {
   --cell: calc(32px * var(--zoom));
   background-image: linear-gradient(transparent calc(100% - 1px), var(--mark) calc(100% - 1px));
   background-size: 100% var(--cell);
+}
+
+/* Fabric's canvas sits on top of the sheet. */
+.canvas-host .canvas-container {
+  position: absolute !important;
+  inset: 0;
 }
 
 /* Sidebar */
@@ -256,6 +291,8 @@ h1.board-title:hover {
 }
 
 .board-list {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -549,6 +586,73 @@ h1.board-title:hover {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.dialog h3 {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.dialog .hint {
+  margin: 8px 0 0;
+}
+
+.dialog .toggle {
+  margin: 16px 0 20px;
+}
+
+.format-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.format-options button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.format-options button span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.format-options button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.nav-link:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.backup-controls {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.backup-controls .nav-link {
+  width: 100%;
+  margin-bottom: 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.backup-controls .nav-link:hover:not(:disabled) {
+  color: var(--text);
 }
 
 .danger-button {

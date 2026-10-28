@@ -41,6 +41,11 @@ npm run tauri build    # installer in src-tauri/target/release/bundle
 | Rename a board | Click its title in the header, double-click it in the sidebar, or use its ⋯ menu |
 | Duplicate / delete a board | ⋯ menu next to the board in the sidebar or on All boards |
 | Find a board | All boards → search |
+| Export | Export in the header → PDF (A4 or Letter pages) or one long PNG, saved with the Windows Save dialog |
+| Back up / restore | Bottom of the sidebar; restoring adds the boards next to your existing ones |
+
+Each board is one long sheet: a fixed width with top, left and right edges, and no end
+at the bottom. Faint lines on the sheet show where A4 pages break in a PDF.
 
 Boards save automatically to this computer (IndexedDB in the app's WebView2 profile)
 about half a second after each change, while you type, and before the window closes.
@@ -56,7 +61,7 @@ about half a second after each change, while you type, and before the window clo
 3. **Phase 2, styling:** sticky notes, text boxes, bubbles, highlighting, colours, backgrounds ✅
 4. **Phase 3, images:** paste, drag and drop, crop, corners, shadows ✅
 5. **Phase 4, saving:** autosave to local database, board list with thumbnails ✅
-6. **Phase 5, export:** PDF/PNG via native Save dialog, backup and restore
+6. **Phase 5, export:** PDF/PNG via native Save dialog, backup and restore ✅
 7. **Phase 6, extras:** pen/highlighter, stickers, templates, dark mode, installer polish
 
 ## Project layout

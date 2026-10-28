@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CanvasView } from "./canvas/CanvasView";
 import { BackgroundPicker } from "./components/BackgroundPicker";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { ExportButton } from "./components/ExportDialog";
 import { HistoryControls } from "./components/HistoryControls";
 import { HomeView } from "./components/HomeView";
 import { Inspector } from "./components/Inspector";
@@ -69,6 +70,7 @@ export default function App() {
             </h1>
           )}
           <div className="header-actions">
+            <ExportButton />
             <BackgroundPicker />
             <HistoryControls />
           </div>

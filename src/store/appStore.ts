@@ -50,6 +50,8 @@ interface AppState {
   /** Changes board details; `touch` also marks the board as just edited. */
   updateBoard: (id: string, patch: Partial<Omit<Board, "id">>, touch?: boolean) => void;
   duplicateBoard: (id: string) => Promise<void>;
+  /** Shows boards that were just written to the database (e.g. restored). */
+  addBoards: (boards: Board[]) => void;
   deleteBoard: (id: string) => Promise<void>;
 }
 
@@ -157,6 +159,16 @@ export const useAppStore = create<AppState>((set, get) => {
         boards.splice(at, 0, copy);
         return { boards };
       });
+    },
+
+    addBoards: (added) => {
+      if (added.length === 0) return;
+      set((s) => ({
+        boards: [...added, ...s.boards].sort((a, b) => b.createdAt - a.createdAt),
+        activeBoardId: added[0].id,
+        view: "board",
+      }));
+      rememberBoard(added[0].id);
     },
 
     deleteBoard: async (id) => {

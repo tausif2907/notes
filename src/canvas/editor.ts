@@ -19,6 +19,7 @@ import { History } from "./history";
 import { NoteImage } from "./noteImage";
 import { NOTE_PRESETS, NoteText, type NoteKind } from "./noteText";
 import { session } from "./session";
+import { keepInside } from "./sheet";
 import { publishSelection, toggleTextStyle } from "./styling";
 import { isPanning, resetView } from "./viewport";
 
@@ -244,7 +245,16 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     if (target.text.trim() === "") canvas.remove(target);
     history.record();
   });
-  canvas.on("object:modified", () => history.record());
+  // Items always stay on the sheet: while dragging, after resizing or
+  // rotating, and when added (which also pulls in items from older boards).
+  canvas.on("object:moving", ({ target }) => keepInside(target));
+  canvas.on("object:added", ({ target }) => {
+    if (!target.excludeFromExport) keepInside(target);
+  });
+  canvas.on("object:modified", ({ target }) => {
+    keepInside(target);
+    history.record();
+  });
 
   for (const event of [
     "selection:created",

@@ -3,7 +3,8 @@ import { Canvas } from "fabric";
 import { useAppStore } from "../store/appStore";
 import { PAPERS } from "../theme";
 import { attachEditor } from "./editor";
-import { attachViewport } from "./viewport";
+import { SHEET_WIDTH, pageHeight } from "./sheet";
+import { attachViewport, viewportResized } from "./viewport";
 
 export function CanvasView() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -25,8 +26,10 @@ export function CanvasView() {
       selectionBorderColor: "#6366f1",
     });
 
-    const resize = () =>
+    const resize = () => {
       canvas.setDimensions({ width: host.clientWidth, height: host.clientHeight });
+      viewportResized();
+    };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(host);
@@ -47,7 +50,17 @@ export function CanvasView() {
       ref={hostRef}
       className="canvas-host"
       data-pattern={background ?? "dots"}
-      style={{ "--paper": color, "--mark": mark } as React.CSSProperties}
-    />
+      style={
+        {
+          "--paper": color,
+          "--mark": mark,
+          "--sheet-width": `${SHEET_WIDTH}px`,
+          "--page-height": `${pageHeight("a4")}px`,
+        } as React.CSSProperties
+      }
+    >
+      {/* The paper behind the canvas; Fabric's canvas is added after it. */}
+      <div className="sheet" />
+    </div>
   );
 }

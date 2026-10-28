@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LayoutGrid, Plus, StickyNote } from "lucide-react";
 import { useAppStore } from "../store/appStore";
+import { BackupControls } from "./BackupControls";
 import { BoardMenu } from "./BoardMenu";
 import { TitleInput } from "./TitleInput";
 import { Thumbnail } from "./Thumbnail";
@@ -57,6 +58,7 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+      <BackupControls />
     </aside>
   );
 }

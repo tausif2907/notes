@@ -1,7 +1,8 @@
 import { Point, type Canvas, type TMat2D, type TPointerEvent } from "fabric";
 import { useAppStore } from "../store/appStore";
+import { SHEET_MARGIN, SHEET_WIDTH } from "./sheet";
 
-export const MIN_ZOOM = 0.1;
+export const MIN_ZOOM = 0.2;
 export const MAX_ZOOM = 5;
 
 let activeCanvas: Canvas | null = null;
@@ -10,12 +11,33 @@ let onViewportChange: ((vpt: TMat2D) => void) | null = null;
 /** True while a pan drag is in progress; other handlers should ignore the gesture. */
 export let isPanning = () => false;
 
-const clampZoom =(z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+
+/**
+ * Keeps the sheet in view: centred when it fits across the screen, its
+ * side edges never pulled past the screen's sides, and nothing above its
+ * top edge. Scrolling down is unlimited.
+ */
+function clampToSheet(canvas: Canvas) {
+  const vpt = [...canvas.viewportTransform] as TMat2D;
+  const width = canvas.getWidth();
+  const sheet = SHEET_WIDTH * vpt[0];
+  if (sheet + 2 * SHEET_MARGIN <= width) vpt[4] = (width - sheet) / 2;
+  else vpt[4] = Math.min(SHEET_MARGIN, Math.max(width - SHEET_MARGIN - sheet, vpt[4]));
+  vpt[5] = Math.min(SHEET_MARGIN, vpt[5]);
+  canvas.setViewportTransform(vpt);
+}
 
 function notify(canvas: Canvas) {
+  clampToSheet(canvas);
   canvas.requestRenderAll();
   onViewportChange?.(canvas.viewportTransform);
   useAppStore.getState().setZoom(canvas.getZoom());
+}
+
+/** Re-applies the sheet limits after the window or panel size changes. */
+export function viewportResized() {
+  if (activeCanvas) notify(activeCanvas);
 }
 
 /** Zoom by a factor, keeping the given screen point fixed (defaults to centre). */
@@ -27,14 +49,16 @@ export function zoomBy(factor: number, at?: Point) {
   notify(canvas);
 }
 
+/** Shows the top of the sheet at 100%, or smaller if the sheet is too wide to fit. */
 export function resetView() {
   const canvas = activeCanvas;
   if (!canvas) return;
-  canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+  const zoom = clampZoom(Math.min(1, (canvas.getWidth() - 2 * SHEET_MARGIN) / SHEET_WIDTH));
+  canvas.setViewportTransform([zoom, 0, 0, zoom, 0, SHEET_MARGIN]);
   notify(canvas);
 }
 
-/** Feeds zoom and pan to the CSS background pattern so it moves with the board. */
+/** Feeds zoom and pan to the CSS sheet and pattern so they move with the board. */
 export function paintBackground(host: HTMLElement, vpt: TMat2D) {
   host.style.setProperty("--zoom", String(vpt[0]));
   host.style.setProperty("--pan-x", `${vpt[4]}px`);
