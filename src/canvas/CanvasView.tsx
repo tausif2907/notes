@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Canvas } from "fabric";
+import { attachEditor } from "./editor";
 import { attachViewport } from "./viewport";
 
 export function CanvasView() {
@@ -25,11 +26,12 @@ export function CanvasView() {
     const observer = new ResizeObserver(resize);
     observer.observe(host);
 
-    const detach = attachViewport(canvas, host);
-
+    const detachViewport = attachViewport(canvas, host);
+    const detachEditor = attachEditor(canvas);
     return () => {
       observer.disconnect();
-      detach();
+      detachEditor();
+      detachViewport();
       void canvas.dispose().then(() => el.remove());
     };
   }, []);

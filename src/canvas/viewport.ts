@@ -8,7 +8,10 @@ const DOT_SPACING = 24;
 let activeCanvas: Canvas | null = null;
 let onViewportChange: ((vpt: TMat2D) => void) | null = null;
 
-const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+/** True while a pan drag is in progress; other handlers should ignore the gesture. */
+export let isPanning = () => false;
+
+const clampZoom =(z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 function notify(canvas: Canvas) {
   canvas.requestRenderAll();
@@ -58,11 +61,14 @@ export function attachViewport(canvas: Canvas, host: HTMLElement) {
     ("button" in e && e.button === 1);
 
   const updateCursor = () => {
-    const pan = useAppStore.getState().tool === "hand" || spaceHeld;
-    canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : "default";
-    canvas.selection = !pan;
+    const tool = useAppStore.getState().tool;
+    const pan = tool === "hand" || spaceHeld;
+    canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : tool === "text" ? "text" : "default";
+    canvas.selection = !pan && tool === "select";
     canvas.setCursor(canvas.defaultCursor);
   };
+  updateCursor();
+  isPanning = () => panning;
 
   canvas.on("mouse:wheel", ({ e }) => {
     e.preventDefault();

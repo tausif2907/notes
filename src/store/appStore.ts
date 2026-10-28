@@ -18,8 +18,11 @@ interface AppState {
   zoom: number;
   boards: Board[];
   activeBoardId: string;
+  canUndo: boolean;
+  canRedo: boolean;
   setTool: (tool: Tool) => void;
   setZoom: (zoom: number) => void;
+  setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
   createBoard: () => void;
   selectBoard: (id: string) => void;
 }
@@ -37,8 +40,11 @@ export const useAppStore = create<AppState>((set) => ({
   zoom: 1,
   boards: [firstBoard],
   activeBoardId: firstBoard.id,
+  canUndo: false,
+  canRedo: false,
   setTool: (tool) => set({ tool }),
   setZoom: (zoom) => set({ zoom }),
+  setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
   createBoard: () =>
     set((s) => {
       const board = newBoard(`Untitled board ${s.boards.length + 1}`);

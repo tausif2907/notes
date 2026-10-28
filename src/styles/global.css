@@ -66,6 +66,29 @@ button {
   font-weight: 600;
 }
 
+.history-controls {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+
+.history-controls button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.history-controls button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.history-controls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .stage {
   position: relative;
   flex: 1;

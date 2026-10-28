@@ -24,7 +24,7 @@ interface ToolDef {
 const TOOLS: ToolDef[] = [
   { id: "select", label: "Select", shortcut: "V", icon: MousePointer2 },
   { id: "hand", label: "Pan", shortcut: "H", icon: Hand },
-  { id: "text", label: "Text", shortcut: "T", icon: Type, comingIn: 1 },
+  { id: "text", label: "Text", shortcut: "T", icon: Type },
   { id: "sticky", label: "Sticky note", shortcut: "S", icon: StickyNote, comingIn: 2 },
   { id: "textbox", label: "Text box", shortcut: "B", icon: RectangleHorizontal, comingIn: 2 },
   { id: "bubble", label: "Speech bubble", shortcut: "U", icon: MessageCircle, comingIn: 2 },

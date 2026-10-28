@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { CanvasView } from "./canvas/CanvasView";
+import { HistoryControls } from "./components/HistoryControls";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { Toolbar, TOOL_SHORTCUTS } from "./components/Toolbar";
@@ -25,6 +26,7 @@ export default function App() {
       <main className="workspace">
         <header className="workspace-header">
           <h1 className="board-title">{board?.title}</h1>
+          <HistoryControls />
         </header>
         <div className="stage">
           <CanvasView />
