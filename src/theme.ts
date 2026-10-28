@@ -38,6 +38,12 @@ export const CORNERS = [
   { label: "Round", value: 28 },
 ];
 
+export const IMAGE_CORNERS = [
+  { label: "Square", value: 0 },
+  { label: "Rounded", value: 16 },
+  { label: "Round", value: 40 },
+];
+
 export const PAPERS = {
   warm: { label: "Warm", color: "#f6f5f2", mark: "#cfcbc2" },
   white: { label: "White", color: "#ffffff", mark: "#dcdcdc" },

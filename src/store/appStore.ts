@@ -22,7 +22,11 @@ interface AppState {
   canUndo: boolean;
   canRedo: boolean;
   selection: SelectionInfo | null;
+  /** Short message shown briefly at the bottom of the board. */
+  notice: { id: number; text: string } | null;
   setTool: (tool: Tool) => void;
+  showNotice: (text: string) => void;
+  clearNotice: (id: number) => void;
   setZoom: (zoom: number) => void;
   setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
   setSelection: (selection: SelectionInfo | null) => void;
@@ -47,7 +51,10 @@ export const useAppStore = create<AppState>((set) => ({
   canUndo: false,
   canRedo: false,
   selection: null,
+  notice: null,
   setTool: (tool) => set({ tool }),
+  showNotice: (text) => set({ notice: { id: Date.now(), text } }),
+  clearNotice: (id) => set((s) => (s.notice?.id === id ? { notice: null } : {})),
   setZoom: (zoom) => set({ zoom }),
   setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
   setSelection: (selection) => set({ selection }),

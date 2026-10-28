@@ -1,5 +1,7 @@
 import type { TextStyleDeclaration } from "fabric";
 import { useAppStore } from "../store/appStore";
+import { isCropping } from "./crop";
+import { NoteImage, type ImageStyleProps } from "./noteImage";
 import { NoteText, type CardProps } from "./noteText";
 import { session } from "./session";
 
@@ -20,12 +22,16 @@ export type CardStyleInfo = Pick<
   "cardFill" | "cardStroke" | "cardStrokeWidth" | "cornerRadius" | "cardShadow"
 >;
 
+export type ImageStyleInfo = Omit<ImageStyleProps, "assetId">;
+
 export interface SelectionInfo {
   count: number;
   /** Styling applies to the highlighted characters rather than whole items. */
   textRange: boolean;
   text: TextStyleInfo | null;
   card: CardStyleInfo | null;
+  image: ImageStyleInfo | null;
+  cropping: boolean;
 }
 
 const isBold = (weight: unknown) => weight === "bold" || Number(weight) >= 600;
@@ -34,7 +40,11 @@ function selectedNotes() {
   return (session.canvas?.getActiveObjects() ?? []).filter((o): o is NoteText => o instanceof NoteText);
 }
 
-const hasTextRange = (note: NoteText) => note.isEditing && note.selectionStart !== note.selectionEnd;
+function selectedImages() {
+  return (session.canvas?.getActiveObjects() ?? []).filter((o): o is NoteImage => o instanceof NoteImage);
+}
+
+const hasTextRange =(note: NoteText) => note.isEditing && note.selectionStart !== note.selectionEnd;
 
 /** Effective style of the highlighted characters, or of the whole item. */
 function readTextStyle(note: NoteText): TextStyleInfo {
@@ -65,7 +75,17 @@ export function publishSelection() {
   if (objects.length === 0) return setSelection(null);
   const notes = selectedNotes();
   const cardNote = notes.find((n) => n.kind !== "text");
+  const image = selectedImages()[0];
   setSelection({
+    cropping: isCropping(),
+    image: image
+      ? {
+          cornerRadius: image.cornerRadius,
+          imageShadow: image.imageShadow,
+          frameColor: image.frameColor,
+          frameWidth: image.frameWidth,
+        }
+      : null,
     count: objects.length,
     textRange: notes.some(hasTextRange),
     text: notes[0] ? readTextStyle(notes[0]) : null,
@@ -116,6 +136,11 @@ export function applyCardStyle(style: Partial<CardProps>) {
   for (const note of selectedNotes()) {
     if (note.kind !== "text") note.set(style);
   }
+  commit();
+}
+
+export function applyImageStyle(style: Partial<ImageStyleInfo>) {
+  for (const image of selectedImages()) image.set(style);
   commit();
 }
 

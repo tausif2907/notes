@@ -2,12 +2,17 @@ import {
   ActiveSelection,
   IText,
   InteractiveFabricObject,
+  Point,
+  util,
   type Canvas,
   type FabricObject,
   type TPointerEvent,
 } from "fabric";
 import { useAppStore, type Tool } from "../store/appStore";
+import { prepareImageBlob, registerAsset } from "./assets";
+import { croppingImage, finishCrop, onCropChange, startCrop } from "./crop";
 import { History } from "./history";
+import { NoteImage } from "./noteImage";
 import { NOTE_PRESETS, NoteText, type NoteKind } from "./noteText";
 import { session } from "./session";
 import { publishSelection, toggleTextStyle } from "./styling";
@@ -15,6 +20,7 @@ import { isPanning, resetView } from "./viewport";
 
 const ACCENT = "#6366f1";
 const DUPLICATE_OFFSET = 20;
+const MAX_NEW_IMAGE = 480;
 
 // Selection handles for every object on the board.
 Object.assign(InteractiveFabricObject.ownDefaults, {
@@ -39,9 +45,54 @@ const CREATE_TOOLS: Partial<Record<Tool, NoteKind>> = {
 const isEditingText = (obj: FabricObject | undefined): obj is IText =>
   obj instanceof IText && obj.isEditing;
 
-function stopEditing() {
+/** Finishes any typing or cropping in progress before a board-wide action. */
+function settle() {
   const active = session.canvas?.getActiveObject();
   if (isEditingText(active)) active.exitEditing();
+  finishCrop(true);
+}
+
+const imageFiles = (files: Iterable<File | null>) =>
+  [...files].filter((f): f is File => !!f && f.type.startsWith("image/"));
+
+/** Adds image files to the board, centred on a point (default: the view's centre). */
+export async function insertImages(files: Blob[], at?: Point) {
+  const canvas = session.canvas;
+  if (!canvas || files.length === 0) return;
+  settle();
+  const center = at ?? canvas.getVpCenter();
+  // New images show at most about 480px on screen at the current zoom.
+  const maxSide = MAX_NEW_IMAGE / canvas.getZoom();
+  const added: NoteImage[] = [];
+  for (const [i, file] of files.entries()) {
+    try {
+      const { id, url } = registerAsset(await prepareImageBlob(file));
+      const element = await util.loadImage(url);
+      const image = new NoteImage(element, { assetId: id });
+      image.scale(Math.min(1, maxSide / Math.max(image.width, image.height)));
+      const offset = i * DUPLICATE_OFFSET;
+      image.setPositionByOrigin(new Point(center.x + offset, center.y + offset), "center", "center");
+      canvas.add(image);
+      added.push(image);
+    } catch (err) {
+      useAppStore.getState().showNotice(err instanceof Error ? err.message : "Could not add that image.");
+    }
+  }
+  if (added.length === 0) return;
+  canvas.discardActiveObject();
+  canvas.setActiveObject(added.length === 1 ? added[0] : new ActiveSelection(added, { canvas }));
+  canvas.requestRenderAll();
+  session.history?.record();
+}
+
+/** Opens the system file picker for images. */
+function pickImages() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.multiple = true;
+  input.onchange = () => void insertImages(imageFiles(input.files ?? []));
+  input.click();
 }
 
 /** Creates an item at the pointer and starts typing in it. */
@@ -58,18 +109,19 @@ function addNoteAt(canvas: Canvas, e: TPointerEvent, kind: NoteKind) {
 }
 
 export function undo() {
-  stopEditing();
+  settle();
   return session.history?.undo();
 }
 
 export function redo() {
-  stopEditing();
+  settle();
   return session.history?.redo();
 }
 
 export function deleteSelection() {
   const canvas = session.canvas;
   if (!canvas) return;
+  finishCrop(true);
   const objects = canvas.getActiveObjects();
   if (objects.length === 0) return;
   canvas.discardActiveObject();
@@ -80,6 +132,7 @@ export function deleteSelection() {
 
 export async function duplicateSelection() {
   const canvas = session.canvas;
+  finishCrop(true);
   const active = canvas?.getActiveObject();
   if (!canvas || !active) return;
   const copy = await active.clone();
@@ -113,7 +166,7 @@ export function selectAll() {
  * Create tools, editing shortcuts, undo history and per-board content.
  * Must be attached after the viewport so pan gestures are seen first.
  */
-export function attachEditor(canvas: Canvas) {
+export function attachEditor(canvas: Canvas, host: HTMLElement) {
   const store = useAppStore.getState;
   const history = new History(canvas, store().setHistoryState);
   session.canvas = canvas;
@@ -140,10 +193,21 @@ export function attachEditor(canvas: Canvas) {
     store().setTool("select");
   });
 
-  // Double-clicking empty board with the select tool also starts new text.
+  // Double-click: empty board starts new text, an image starts cropping.
   canvas.on("mouse:dblclick", ({ e, target }) => {
-    if (!target && store().tool === "select" && !isPanning()) addNoteAt(canvas, e, "text");
+    if (store().tool !== "select" || isPanning()) return;
+    if (!target) addNoteAt(canvas, e, "text");
+    else if (target instanceof NoteImage && !croppingImage()) startCrop(target);
   });
+
+  // Selecting something else, or nothing, keeps the crop so far.
+  const keepCropOnDeselect = () => {
+    const image = croppingImage();
+    if (image && canvas.getActiveObject() !== image) finishCrop(true);
+  };
+  canvas.on("selection:updated", keepCropOnDeselect);
+  canvas.on("selection:cleared", keepCropOnDeselect);
+  const stopCropListener = onCropChange(publishSelection);
 
   canvas.on("text:editing:exited", ({ target }) => {
     if (target.text.trim() === "") canvas.remove(target);
@@ -162,7 +226,7 @@ export function attachEditor(canvas: Canvas) {
     canvas.on(event, publishSelection);
   }
 
-  const isTyping = (e: KeyboardEvent) =>
+  const isTyping = (e: Event) =>
     e.target instanceof HTMLInputElement ||
     e.target instanceof HTMLTextAreaElement ||
     (e.target as HTMLElement | null)?.isContentEditable;
@@ -170,6 +234,11 @@ export function attachEditor(canvas: Canvas) {
   const onKeyDown = (e: KeyboardEvent) => {
     const active = canvas.getActiveObject();
     const key = e.key.toLowerCase();
+    if (croppingImage() && (e.key === "Escape" || e.key === "Enter")) {
+      finishCrop(e.key === "Enter");
+      e.preventDefault();
+      return;
+    }
     if (e.key === "Escape") {
       if (isEditingText(active)) active.exitEditing();
       else canvas.discardActiveObject();
@@ -196,11 +265,67 @@ export function attachEditor(canvas: Canvas) {
   };
   window.addEventListener("keydown", onKeyDown);
 
-  // Each board keeps its own content (in memory until saving lands in Phase 4).
+  // Ctrl+V: images from the clipboard (e.g. screenshots) go on the board;
+  // plain text becomes a new text item unless you are typing somewhere.
+  const onPaste = (e: ClipboardEvent) => {
+    const data = e.clipboardData;
+    if (!data) return;
+    const images = imageFiles([...data.items].map((item) => item.getAsFile()));
+    if (images.length > 0) {
+      e.preventDefault();
+      void insertImages(images);
+      return;
+    }
+    if (isTyping(e) || isEditingText(canvas.getActiveObject())) return;
+    const text = data.getData("text/plain").trim();
+    if (!text) return;
+    e.preventDefault();
+    settle();
+    const note = new NoteText(text, NOTE_PRESETS.text);
+    note.setPositionByOrigin(canvas.getVpCenter(), "center", "center");
+    canvas.add(note);
+    canvas.setActiveObject(note);
+    canvas.requestRenderAll();
+    history.record();
+  };
+  window.addEventListener("paste", onPaste);
+
+  // Dropping image files places them where they are dropped.
+  const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes("Files") ?? false;
+  const onDragOver = (e: DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = "copy";
+    host.classList.add("drop-target");
+  };
+  const onDragLeave = (e: DragEvent) => {
+    if (!host.contains(e.relatedTarget as Node | null)) host.classList.remove("drop-target");
+  };
+  const onDrop = (e: DragEvent) => {
+    host.classList.remove("drop-target");
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    const files = imageFiles(e.dataTransfer!.files);
+    if (files.length === 0) {
+      store().showNotice("Only image files can be dropped onto the board.");
+      return;
+    }
+    void insertImages(files, canvas.getScenePoint(e));
+  };
+  host.addEventListener("dragover", onDragOver);
+  host.addEventListener("dragleave", onDragLeave);
+  host.addEventListener("drop", onDrop);
+
   const contents = new Map<string, string>();
   const unsubscribe = useAppStore.subscribe(async (s, prev) => {
+    // The Image tool opens the file picker, then hands back to Select.
+    if (s.tool === "image" && prev.tool !== "image") {
+      s.setTool("select");
+      pickImages();
+    }
     if (s.activeBoardId === prev.activeBoardId) return;
-    stopEditing();
+    // Each board keeps its own content (in memory until saving lands in Phase 4).
+    settle();
     contents.set(prev.activeBoardId, history.snapshot());
     await history.load(contents.get(s.activeBoardId) ?? '{"objects":[]}');
     history.reset();
@@ -209,6 +334,11 @@ export function attachEditor(canvas: Canvas) {
 
   return () => {
     window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("paste", onPaste);
+    host.removeEventListener("dragover", onDragOver);
+    host.removeEventListener("dragleave", onDragLeave);
+    host.removeEventListener("drop", onDrop);
+    stopCropListener();
     unsubscribe();
     if (session.canvas === canvas) {
       session.canvas = null;

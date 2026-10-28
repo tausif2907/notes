@@ -28,7 +28,7 @@ const TOOLS: ToolDef[] = [
   { id: "sticky", label: "Sticky note", shortcut: "S", icon: StickyNote },
   { id: "textbox", label: "Text box", shortcut: "B", icon: RectangleHorizontal },
   { id: "bubble", label: "Speech bubble", shortcut: "U", icon: MessageCircle },
-  { id: "image", label: "Image", shortcut: "I", icon: Image, comingIn: 3 },
+  { id: "image", label: "Image", shortcut: "I", icon: Image },
   { id: "pen", label: "Pen", shortcut: "P", icon: PenLine, comingIn: 6 },
   { id: "highlighter", label: "Highlighter", shortcut: "M", icon: Highlighter, comingIn: 6 },
 ];

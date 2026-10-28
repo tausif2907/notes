@@ -32,8 +32,7 @@ export function CanvasView() {
     observer.observe(host);
 
     const detachViewport = attachViewport(canvas, host);
-    const detachEditor = attachEditor(canvas);
-    return () => {
+    const detachEditor = attachEditor(canvas, host);    return () => {
       observer.disconnect();
       detachEditor();
       detachViewport();

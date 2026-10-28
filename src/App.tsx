@@ -3,6 +3,7 @@ import { CanvasView } from "./canvas/CanvasView";
 import { BackgroundPicker } from "./components/BackgroundPicker";
 import { HistoryControls } from "./components/HistoryControls";
 import { Inspector } from "./components/Inspector";
+import { Notice } from "./components/Notice";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { Toolbar, TOOL_SHORTCUTS } from "./components/Toolbar";
@@ -39,6 +40,7 @@ export default function App() {
             <Toolbar />
           </div>
           <Inspector />
+          <Notice />
           <div className="status-dock">
             <StatusBar />
           </div>

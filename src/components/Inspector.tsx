@@ -6,7 +6,9 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Bold,
+  Check,
   Copy,
+  Crop,
   Italic,
   Minus,
   Plus,
@@ -15,8 +17,12 @@ import {
   Underline,
 } from "lucide-react";
 import { useAppStore } from "../store/appStore";
+import { finishCrop, startCrop } from "../canvas/crop";
+import { NoteImage } from "../canvas/noteImage";
+import { session } from "../canvas/session";
 import {
   applyCardStyle,
+  applyImageStyle,
   applyTextStyle,
   bringToFront,
   sendToBack,
@@ -32,6 +38,7 @@ import {
   FONTS,
   FONT_SIZES,
   HIGHLIGHTS,
+  IMAGE_CORNERS,
   TEXT_COLORS,
 } from "../theme";
 
@@ -95,6 +102,20 @@ function IconButton({
   );
 }
 
+/** White first: a white border makes a photo look like a printed snapshot. */
+const IMAGE_BORDERS = ["", "#ffffff", ...BORDER_COLORS.slice(1)];
+
+const IMAGE_BORDER_WIDTHS = [
+  { label: "Thin", value: 3 },
+  { label: "Medium", value: 6 },
+  { label: "Thick", value: 12 },
+];
+
+function startCropOnSelection() {
+  const image = session.canvas?.getActiveObject();
+  if (image instanceof NoteImage) startCrop(image);
+}
+
 function stepFontSize(current: number, direction: 1 | -1) {
   const next =
     direction > 0 ? FONT_SIZES.find((s) => s > current) : [...FONT_SIZES].reverse().find((s) => s < current);
@@ -105,11 +126,79 @@ function stepFontSize(current: number, direction: 1 | -1) {
 export function Inspector() {
   const selection = useAppStore((s) => s.selection);
   if (!selection) return null;
-  const { text, card, textRange } = selection;
+  const { text, card, image, textRange } = selection;
+
+  if (selection.cropping) {
+    return (
+      <aside className="inspector" onMouseDown={(e) => e.preventDefault()}>
+        <Section title="Crop">
+          <p className="hint">Drag the black handles to trim the image. The faded part will be cut off.</p>
+          <div className="row">
+            <button className="secondary-button" onClick={() => finishCrop(false)}>
+              Cancel <kbd>Esc</kbd>
+            </button>
+            <button className="primary-button" onClick={() => finishCrop(true)}>
+              <Check size={15} /> Done <kbd>Enter</kbd>
+            </button>
+          </div>
+        </Section>
+      </aside>
+    );
+  }
 
   return (
     // Keeping focus on the canvas means styling never interrupts typing.
     <aside className="inspector" onMouseDown={(e) => e.preventDefault()}>
+      {image && (
+        <Section title="Image">
+          <button className="secondary-button" onClick={startCropOnSelection}>
+            <Crop size={15} /> Crop image
+          </button>
+          <h3>Corners</h3>
+          <div className="segmented">
+            {IMAGE_CORNERS.map(({ label, value }) => (
+              <button
+                key={value}
+                className={image.cornerRadius === value ? "active" : ""}
+                onClick={() => applyImageStyle({ cornerRadius: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <h3>Border</h3>
+          <Swatches
+            colors={IMAGE_BORDERS}
+            value={image.frameWidth > 0 ? image.frameColor : ""}
+            noneLabel="No border"
+            onPick={(frameColor) =>
+              applyImageStyle({ frameColor, frameWidth: frameColor ? image.frameWidth || 6 : 0 })
+            }
+          />
+          {image.frameWidth > 0 && (
+            <div className="segmented">
+              {IMAGE_BORDER_WIDTHS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  className={image.frameWidth === value ? "active" : ""}
+                  onClick={() => applyImageStyle({ frameWidth: value })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={image.imageShadow}
+              onChange={(e) => applyImageStyle({ imageShadow: e.target.checked })}
+            />
+            Shadow
+          </label>
+        </Section>
+      )}
+
       {text && (
         <Section title={textRange ? "Selected text" : "Text"}>
           <div className="font-list">
