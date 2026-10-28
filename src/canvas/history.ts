@@ -17,6 +17,8 @@ export class History {
   constructor(
     private canvas: Canvas,
     private onChange: (canUndo: boolean, canRedo: boolean) => void,
+    /** Called when the board's content changes through an edit, undo or redo. */
+    private onCommit: () => void = () => {},
   ) {}
 
   snapshot() {
@@ -39,6 +41,7 @@ export class History {
     if (this.stack.length > MAX_STEPS) this.stack.shift();
     this.index = this.stack.length - 1;
     this.notify();
+    this.onCommit();
   }
 
   undo() {
@@ -68,6 +71,7 @@ export class History {
       await this.load(this.stack[index]);
       this.index = index;
       this.notify();
+      this.onCommit();
     } finally {
       this.busy = false;
     }

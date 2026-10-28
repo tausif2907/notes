@@ -1,15 +1,8 @@
 import type { PAPERS } from "../theme";
 
-// Core data model. Boards hold items; images live in a separate asset table
-// so pasted files are stored once as binary blobs and referenced by id.
-
-export type ItemType =
-  | "text"
-  | "sticky"
-  | "textbox"
-  | "bubble"
-  | "image"
-  | "stroke";
+// Core data model. A board's items are stored together as one Fabric JSON
+// document; images live in a separate asset table so each file is stored
+// once as a binary blob and referenced by id.
 
 export interface Board {
   id: string;
@@ -18,7 +11,7 @@ export interface Board {
   updatedAt: number;
   background: BoardBackground;
   paper: BoardPaper;
-  /** Small PNG data URL used on the home screen. */
+  /** Small JPEG data URL used in the board lists. */
   thumbnail?: string;
 }
 
@@ -26,20 +19,12 @@ export type BoardBackground = "dots" | "grid" | "lines" | "plain";
 
 export type BoardPaper = keyof typeof PAPERS;
 
-export interface BoardItem {
-  id: string;
+export interface BoardContent {
   boardId: string;
-  type: ItemType;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-  zIndex: number;
-  /** Type-specific styling (colours, fonts, border, tail position, ...). */
-  style: Record<string, unknown>;
-  /** Type-specific content (rich text, asset id, stroke path, ...). */
-  content: unknown;
+  /** Fabric canvas JSON; image sources are blank and restored from assetIds. */
+  json: string;
+  /** Images this board uses, so unused image files can be cleaned up. */
+  assetIds: string[];
 }
 
 export interface Asset {

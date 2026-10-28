@@ -8,8 +8,12 @@ import {
   type FabricObject,
   type TPointerEvent,
 } from "fabric";
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { loadContent } from "../db/persistence";
 import { useAppStore, type Tool } from "../store/appStore";
 import { prepareImageBlob, registerAsset } from "./assets";
+import { flushSave, scheduleSave } from "./autosave";
 import { croppingImage, finishCrop, onCropChange, startCrop } from "./crop";
 import { History } from "./history";
 import { NoteImage } from "./noteImage";
@@ -168,10 +172,37 @@ export function selectAll() {
  */
 export function attachEditor(canvas: Canvas, host: HTMLElement) {
   const store = useAppStore.getState;
-  const history = new History(canvas, store().setHistoryState);
+  const history = new History(canvas, store().setHistoryState, scheduleSave);
   session.canvas = canvas;
   session.history = history;
-  history.reset();
+
+  // Loads a board from the database. A newer request wins if boards are
+  // switched quickly; saving is paused until the board is fully on screen.
+  let loadToken = 0;
+  const openBoard = async (boardId: string) => {
+    const token = ++loadToken;
+    settle();
+    await flushSave();
+    session.boardId = null;
+    let json: string;
+    try {
+      json = await loadContent(boardId);
+    } catch (err) {
+      console.error(err);
+      store().showNotice("This board could not be opened.");
+      json = '{"objects":[]}';
+    }
+    if (token !== loadToken) return;
+    await history.load(json);
+    if (token !== loadToken) return;
+    session.boardId = boardId;
+    history.reset();
+    resetView();
+  };
+  void openBoard(store().activeBoardId);
+
+  // Typing is only an undo step once it finishes, but it is saved as you go.
+  canvas.on("text:changed", scheduleSave);
 
   // A click (not a drag-to-pan) with a create tool places a new item.
   // With the text tool, clicking existing text edits it instead.
@@ -232,6 +263,7 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     (e.target as HTMLElement | null)?.isContentEditable;
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (store().view !== "board") return;
     const active = canvas.getActiveObject();
     const key = e.key.toLowerCase();
     if (croppingImage() && (e.key === "Escape" || e.key === "Enter")) {
@@ -269,7 +301,7 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   // plain text becomes a new text item unless you are typing somewhere.
   const onPaste = (e: ClipboardEvent) => {
     const data = e.clipboardData;
-    if (!data) return;
+    if (!data || store().view !== "board") return;
     const images = imageFiles([...data.items].map((item) => item.getAsFile()));
     if (images.length > 0) {
       e.preventDefault();
@@ -316,21 +348,33 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   host.addEventListener("dragleave", onDragLeave);
   host.addEventListener("drop", onDrop);
 
-  const contents = new Map<string, string>();
-  const unsubscribe = useAppStore.subscribe(async (s, prev) => {
+  const unsubscribe = useAppStore.subscribe((s, prev) => {
     // The Image tool opens the file picker, then hands back to Select.
     if (s.tool === "image" && prev.tool !== "image") {
       s.setTool("select");
       pickImages();
     }
-    if (s.activeBoardId === prev.activeBoardId) return;
-    // Each board keeps its own content (in memory until saving lands in Phase 4).
-    settle();
-    contents.set(prev.activeBoardId, history.snapshot());
-    await history.load(contents.get(s.activeBoardId) ?? '{"objects":[]}');
-    history.reset();
-    resetView();
+    if (s.activeBoardId !== prev.activeBoardId) void openBoard(s.activeBoardId);
+    // Going to the board list finishes any typing so it gets saved.
+    if (s.view === "home" && prev.view !== "home") {
+      settle();
+      void flushSave();
+    }
   });
+
+  // Save before the app closes. The desktop window waits for the save;
+  // the browser fallback is best effort.
+  const onPageHide = () => void flushSave();
+  window.addEventListener("pagehide", onPageHide);
+  let stopCloseListener: (() => void) | undefined;
+  if (isTauri()) {
+    void getCurrentWindow()
+      .onCloseRequested(async () => {
+        settle();
+        await flushSave();
+      })
+      .then((unlisten) => (stopCloseListener = unlisten));
+  }
 
   return () => {
     window.removeEventListener("keydown", onKeyDown);
@@ -340,9 +384,14 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     host.removeEventListener("drop", onDrop);
     stopCropListener();
     unsubscribe();
+    window.removeEventListener("pagehide", onPageHide);
+    stopCloseListener?.();
+    void flushSave();
+    loadToken++;
     if (session.canvas === canvas) {
       session.canvas = null;
       session.history = null;
+      session.boardId = null;
     }
   };
 }

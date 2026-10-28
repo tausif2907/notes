@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Grid3x3, Paintbrush, Rows3, Square, Grip } from "lucide-react";
+import { scheduleSave } from "../canvas/autosave";
 import { useAppStore } from "../store/appStore";
 import { PAPERS } from "../theme";
 import type { BoardBackground, BoardPaper } from "../types/board";
@@ -63,7 +64,11 @@ export function BackgroundPicker() {
                 style={{ background: PAPERS[id].color }}
                 title={PAPERS[id].label}
                 aria-label={PAPERS[id].label}
-                onClick={() => updateBoard(board.id, { paper: id })}
+                onClick={() => {
+                  updateBoard(board.id, { paper: id });
+                  // Re-saving refreshes the thumbnail with the new paper colour.
+                  scheduleSave();
+                }}
               />
             ))}
           </div>

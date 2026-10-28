@@ -38,6 +38,12 @@ npm run tauri build    # installer in src-tauri/target/release/bundle
 | Add images | Ctrl V (e.g. a Win+Shift+S screenshot), drag files onto the board, or the Image tool (I) |
 | Crop an image | Double-click it (or "Crop image" in the panel), drag the black handles, Enter to keep, Esc to cancel |
 | Paste text | Ctrl V on the board creates a text item |
+| Rename a board | Click its title in the header, double-click it in the sidebar, or use its ⋯ menu |
+| Duplicate / delete a board | ⋯ menu next to the board in the sidebar or on All boards |
+| Find a board | All boards → search |
+
+Boards save automatically to this computer (IndexedDB in the app's WebView2 profile)
+about half a second after each change, while you type, and before the window closes.
 | Finish editing / deselect | Esc |
 | Delete | Delete or Backspace |
 | Duplicate / select all | Ctrl D / Ctrl A |
@@ -49,7 +55,7 @@ npm run tauri build    # installer in src-tauri/target/release/bundle
 2. **Phase 1, core canvas:** text anywhere, select/move/resize/delete, undo/redo ✅
 3. **Phase 2, styling:** sticky notes, text boxes, bubbles, highlighting, colours, backgrounds ✅
 4. **Phase 3, images:** paste, drag and drop, crop, corners, shadows ✅
-5. **Phase 4, saving:** autosave to local database, board list with thumbnails
+5. **Phase 4, saving:** autosave to local database, board list with thumbnails ✅
 6. **Phase 5, export:** PDF/PNG via native Save dialog, backup and restore
 7. **Phase 6, extras:** pen/highlighter, stickers, templates, dark mode, installer polish
 
