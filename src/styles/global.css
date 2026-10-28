@@ -1,0 +1,250 @@
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --sidebar: #efede8;
+  --border: #e2dfd8;
+  --text: #2b2a27;
+  --text-muted: #7a776f;
+  --accent: #6366f1;
+  --accent-soft: #e8e8fd;
+  --dot: #cfcbc2;
+  --shadow: 0 4px 16px rgba(30, 28, 24, 0.08), 0 1px 3px rgba(30, 28, 24, 0.06);
+
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Layout */
+
+.app {
+  display: flex;
+  height: 100%;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.workspace-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.board-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.canvas-host {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.4px);
+  background-size: 24px 24px;
+}
+
+/* Sidebar */
+
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.brand svg {
+  color: #e0a800;
+}
+
+.new-board {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.new-board:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sidebar-heading {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.board-link {
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.board-link:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.board-link.active {
+  background: var(--surface);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Floating toolbar */
+
+.toolbar-dock {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.toolbar-slot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.tool-button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tool-button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Zoom controls */
+
+.status-dock {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.zoom-controls button {
+  height: 28px;
+  min-width: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+}
+
+.zoom-controls button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.zoom-value {
+  width: 52px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
