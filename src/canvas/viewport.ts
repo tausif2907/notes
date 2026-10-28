@@ -3,7 +3,6 @@ import { useAppStore } from "../store/appStore";
 
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 5;
-const DOT_SPACING = 24;
 
 let activeCanvas: Canvas | null = null;
 let onViewportChange: ((vpt: TMat2D) => void) | null = null;
@@ -35,11 +34,11 @@ export function resetView() {
   notify(canvas);
 }
 
-/** Moves the dotted background so it pans and scales with the board. */
-export function paintDots(host: HTMLElement, vpt: TMat2D) {
-  const size = DOT_SPACING * vpt[0];
-  host.style.backgroundSize = `${size}px ${size}px`;
-  host.style.backgroundPosition = `${vpt[4]}px ${vpt[5]}px`;
+/** Feeds zoom and pan to the CSS background pattern so it moves with the board. */
+export function paintBackground(host: HTMLElement, vpt: TMat2D) {
+  host.style.setProperty("--zoom", String(vpt[0]));
+  host.style.setProperty("--pan-x", `${vpt[4]}px`);
+  host.style.setProperty("--pan-y", `${vpt[5]}px`);
 }
 
 /**
@@ -48,8 +47,8 @@ export function paintDots(host: HTMLElement, vpt: TMat2D) {
  */
 export function attachViewport(canvas: Canvas, host: HTMLElement) {
   activeCanvas = canvas;
-  onViewportChange = (vpt) => paintDots(host, vpt);
-  paintDots(host, canvas.viewportTransform);
+  onViewportChange = (vpt) => paintBackground(host, vpt);
+  paintBackground(host, canvas.viewportTransform);
 
   let spaceHeld = false;
   let panning = false;
@@ -63,8 +62,11 @@ export function attachViewport(canvas: Canvas, host: HTMLElement) {
   const updateCursor = () => {
     const tool = useAppStore.getState().tool;
     const pan = tool === "hand" || spaceHeld;
-    canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : tool === "text" ? "text" : "default";
+    const cursor = tool === "text" ? "text" : tool === "select" ? "default" : "crosshair";
+    canvas.defaultCursor = panning ? "grabbing" : pan ? "grab" : cursor;
     canvas.selection = !pan && tool === "select";
+    // Panning and placing new items must not grab or drag existing ones.
+    canvas.skipTargetFind = pan || (tool !== "select" && tool !== "text");
     canvas.setCursor(canvas.defaultCursor);
   };
   updateCursor();

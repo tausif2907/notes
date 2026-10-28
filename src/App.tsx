@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { CanvasView } from "./canvas/CanvasView";
+import { BackgroundPicker } from "./components/BackgroundPicker";
 import { HistoryControls } from "./components/HistoryControls";
+import { Inspector } from "./components/Inspector";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { Toolbar, TOOL_SHORTCUTS } from "./components/Toolbar";
@@ -26,13 +28,17 @@ export default function App() {
       <main className="workspace">
         <header className="workspace-header">
           <h1 className="board-title">{board?.title}</h1>
-          <HistoryControls />
+          <div className="header-actions">
+            <BackgroundPicker />
+            <HistoryControls />
+          </div>
         </header>
         <div className="stage">
           <CanvasView />
           <div className="toolbar-dock">
             <Toolbar />
           </div>
+          <Inspector />
           <div className="status-dock">
             <StatusBar />
           </div>

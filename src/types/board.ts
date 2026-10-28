@@ -1,3 +1,5 @@
+import type { PAPERS } from "../theme";
+
 // Core data model. Boards hold items; images live in a separate asset table
 // so pasted files are stored once as binary blobs and referenced by id.
 
@@ -15,11 +17,14 @@ export interface Board {
   createdAt: number;
   updatedAt: number;
   background: BoardBackground;
+  paper: BoardPaper;
   /** Small PNG data URL used on the home screen. */
   thumbnail?: string;
 }
 
 export type BoardBackground = "dots" | "grid" | "lines" | "plain";
+
+export type BoardPaper = keyof typeof PAPERS;
 
 export interface BoardItem {
   id: string;

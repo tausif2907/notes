@@ -30,6 +30,11 @@ npm run tauri build    # installer in src-tauri/target/release/bundle
 | Reset view | Ctrl 0 |
 | Select tool | V |
 | Add text | Text tool (T) then click, or double-click empty board |
+| Sticky note / text box / speech bubble | S / B / U then click |
+| Point a speech bubble | Select it and drag the blue dot at the tail's tip |
+| Highlight or style words | Select words while typing, then use the style panel |
+| Bold / italic / underline | Ctrl B / Ctrl I / Ctrl U |
+| Board pattern and paper colour | Background button in the header |
 | Finish editing / deselect | Esc |
 | Delete | Delete or Backspace |
 | Duplicate / select all | Ctrl D / Ctrl A |
@@ -39,7 +44,7 @@ npm run tauri build    # installer in src-tauri/target/release/bundle
 
 1. **Phase 0, setup:** project scaffold, app shell, zoomable/pannable canvas ✅
 2. **Phase 1, core canvas:** text anywhere, select/move/resize/delete, undo/redo ✅
-3. **Phase 2, styling:** sticky notes, text boxes, bubbles, highlighting, colours, backgrounds
+3. **Phase 2, styling:** sticky notes, text boxes, bubbles, highlighting, colours, backgrounds ✅
 4. **Phase 3, images:** paste, drag and drop, crop, corners, shadows
 5. **Phase 4, saving:** autosave to local database, board list with thumbnails
 6. **Phase 5, export:** PDF/PNG via native Save dialog, backup and restore

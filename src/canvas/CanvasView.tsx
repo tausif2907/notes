@@ -1,10 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Canvas } from "fabric";
+import { useAppStore } from "../store/appStore";
+import { PAPERS } from "../theme";
 import { attachEditor } from "./editor";
 import { attachViewport } from "./viewport";
 
 export function CanvasView() {
   const hostRef = useRef<HTMLDivElement>(null);
+  const background = useAppStore((s) => s.boards.find((b) => b.id === s.activeBoardId)?.background);
+  const paper = useAppStore((s) => s.boards.find((b) => b.id === s.activeBoardId)?.paper);
+  const { color, mark } = PAPERS[paper ?? "warm"];
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -36,5 +41,12 @@ export function CanvasView() {
     };
   }, []);
 
-  return <div ref={hostRef} className="canvas-host" />;
+  return (
+    <div
+      ref={hostRef}
+      className="canvas-host"
+      data-pattern={background ?? "dots"}
+      style={{ "--paper": color, "--mark": mark } as React.CSSProperties}
+    />
+  );
 }

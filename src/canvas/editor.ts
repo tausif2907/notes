@@ -2,13 +2,15 @@ import {
   ActiveSelection,
   IText,
   InteractiveFabricObject,
-  Textbox,
   type Canvas,
   type FabricObject,
   type TPointerEvent,
 } from "fabric";
-import { useAppStore } from "../store/appStore";
+import { useAppStore, type Tool } from "../store/appStore";
 import { History } from "./history";
+import { NOTE_PRESETS, NoteText, type NoteKind } from "./noteText";
+import { session } from "./session";
+import { publishSelection, toggleTextStyle } from "./styling";
 import { isPanning, resetView } from "./viewport";
 
 const ACCENT = "#6366f1";
@@ -26,66 +28,58 @@ Object.assign(InteractiveFabricObject.ownDefaults, {
   padding: 6,
 });
 
-const TEXT_DEFAULTS = {
-  width: 260,
-  fontSize: 20,
-  lineHeight: 1.3,
-  fontFamily: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
-  fill: "#2b2a27",
-  originX: "left",
-  originY: "top",
-  editingBorderColor: ACCENT,
-  cursorColor: ACCENT,
-  selectionColor: "rgba(99, 102, 241, 0.25)",
-} as const;
-
-let activeCanvas: Canvas | null = null;
-let history: History | null = null;
+/** Tools that place a new item where you click. */
+const CREATE_TOOLS: Partial<Record<Tool, NoteKind>> = {
+  text: "text",
+  sticky: "sticky",
+  textbox: "box",
+  bubble: "bubble",
+};
 
 const isEditingText = (obj: FabricObject | undefined): obj is IText =>
   obj instanceof IText && obj.isEditing;
 
-/** Creates an empty text box at the pointer and starts typing in it. */
-function addTextAt(canvas: Canvas, e: TPointerEvent) {
+function stopEditing() {
+  const active = session.canvas?.getActiveObject();
+  if (isEditingText(active)) active.exitEditing();
+}
+
+/** Creates an item at the pointer and starts typing in it. */
+function addNoteAt(canvas: Canvas, e: TPointerEvent, kind: NoteKind) {
   const p = canvas.getScenePoint(e);
-  const text = new Textbox("", {
-    ...TEXT_DEFAULTS,
-    left: p.x,
-    top: p.y - TEXT_DEFAULTS.fontSize * 0.65,
-  });
-  canvas.add(text);
-  canvas.setActiveObject(text);
-  text.enterEditing();
+  const note = new NoteText("", NOTE_PRESETS[kind]);
+  // Plain text starts at the click like a text cursor; cards centre on it.
+  if (kind === "text") note.set({ left: p.x, top: p.y - note.fontSize * 0.65 });
+  else note.set({ left: p.x - note.width / 2, top: p.y - note.height / 2 });
+  canvas.add(note);
+  canvas.setActiveObject(note);
+  note.enterEditing();
   canvas.requestRenderAll();
 }
 
 export function undo() {
-  const canvas = activeCanvas;
-  const active = canvas?.getActiveObject();
-  if (isEditingText(active)) active.exitEditing();
-  return history?.undo();
+  stopEditing();
+  return session.history?.undo();
 }
 
 export function redo() {
-  const canvas = activeCanvas;
-  const active = canvas?.getActiveObject();
-  if (isEditingText(active)) active.exitEditing();
-  return history?.redo();
+  stopEditing();
+  return session.history?.redo();
 }
 
 export function deleteSelection() {
-  const canvas = activeCanvas;
+  const canvas = session.canvas;
   if (!canvas) return;
   const objects = canvas.getActiveObjects();
   if (objects.length === 0) return;
   canvas.discardActiveObject();
   canvas.remove(...objects);
   canvas.requestRenderAll();
-  history?.record();
+  session.history?.record();
 }
 
 export async function duplicateSelection() {
-  const canvas = activeCanvas;
+  const canvas = session.canvas;
   const active = canvas?.getActiveObject();
   if (!canvas || !active) return;
   const copy = await active.clone();
@@ -100,11 +94,11 @@ export async function duplicateSelection() {
   }
   canvas.setActiveObject(copy);
   canvas.requestRenderAll();
-  history?.record();
+  session.history?.record();
 }
 
 export function selectAll() {
-  const canvas = activeCanvas;
+  const canvas = session.canvas;
   if (!canvas) return;
   const objects = canvas.getObjects();
   if (objects.length === 0) return;
@@ -116,43 +110,57 @@ export function selectAll() {
 }
 
 /**
- * Text tool, editing shortcuts, undo history and per-board content.
+ * Create tools, editing shortcuts, undo history and per-board content.
  * Must be attached after the viewport so pan gestures are seen first.
  */
 export function attachEditor(canvas: Canvas) {
-  activeCanvas = canvas;
   const store = useAppStore.getState;
-  const hist = new History(canvas, store().setHistoryState);
-  history = hist;
-  hist.reset();
+  const history = new History(canvas, store().setHistoryState);
+  session.canvas = canvas;
+  session.history = history;
+  history.reset();
 
-  // Text tool: a click (not a drag-to-pan) creates text, or edits the text clicked.
-  let textClick = false;
+  // A click (not a drag-to-pan) with a create tool places a new item.
+  // With the text tool, clicking existing text edits it instead.
+  let createKind: NoteKind | undefined;
   canvas.on("mouse:down", ({ e }) => {
-    textClick = store().tool === "text" && !isPanning() && !("button" in e && e.button !== 0);
+    const leftButton = !("button" in e) || e.button === 0;
+    createKind = leftButton && !isPanning() ? CREATE_TOOLS[store().tool] : undefined;
   });
   canvas.on("mouse:up", ({ e, target }) => {
-    if (!textClick) return;
-    textClick = false;
-    if (target instanceof IText) {
+    if (!createKind) return;
+    const kind = createKind;
+    createKind = undefined;
+    if (kind === "text" && target instanceof IText) {
       canvas.setActiveObject(target);
       if (!target.isEditing) target.enterEditing();
     } else {
-      addTextAt(canvas, e);
+      addNoteAt(canvas, e, kind);
     }
     store().setTool("select");
   });
 
   // Double-clicking empty board with the select tool also starts new text.
   canvas.on("mouse:dblclick", ({ e, target }) => {
-    if (!target && store().tool === "select" && !isPanning()) addTextAt(canvas, e);
+    if (!target && store().tool === "select" && !isPanning()) addNoteAt(canvas, e, "text");
   });
 
   canvas.on("text:editing:exited", ({ target }) => {
     if (target.text.trim() === "") canvas.remove(target);
-    hist.record();
+    history.record();
   });
-  canvas.on("object:modified", () => hist.record());
+  canvas.on("object:modified", () => history.record());
+
+  for (const event of [
+    "selection:created",
+    "selection:updated",
+    "selection:cleared",
+    "text:selection:changed",
+    "text:editing:entered",
+    "text:editing:exited",
+  ] as const) {
+    canvas.on(event, publishSelection);
+  }
 
   const isTyping = (e: KeyboardEvent) =>
     e.target instanceof HTMLInputElement ||
@@ -161,15 +169,23 @@ export function attachEditor(canvas: Canvas) {
 
   const onKeyDown = (e: KeyboardEvent) => {
     const active = canvas.getActiveObject();
+    const key = e.key.toLowerCase();
     if (e.key === "Escape") {
       if (isEditingText(active)) active.exitEditing();
       else canvas.discardActiveObject();
       canvas.requestRenderAll();
       return;
     }
+    // Formatting shortcuts work both while typing and on selected items.
+    if (e.ctrlKey && !e.shiftKey && (key === "b" || key === "i" || key === "u")) {
+      if (canvas.getActiveObjects().some((o) => o instanceof NoteText)) {
+        toggleTextStyle(key === "b" ? "bold" : key === "i" ? "italic" : "underline");
+        e.preventDefault();
+      }
+      return;
+    }
     if (isTyping(e) || isEditingText(active)) return;
 
-    const key = e.key.toLowerCase();
     if (e.ctrlKey && key === "z" && !e.shiftKey) void undo();
     else if (e.ctrlKey && (key === "y" || key === "z")) void redo();
     else if (e.ctrlKey && key === "d") void duplicateSelection();
@@ -184,20 +200,19 @@ export function attachEditor(canvas: Canvas) {
   const contents = new Map<string, string>();
   const unsubscribe = useAppStore.subscribe(async (s, prev) => {
     if (s.activeBoardId === prev.activeBoardId) return;
-    const active = canvas.getActiveObject();
-    if (isEditingText(active)) active.exitEditing();
-    contents.set(prev.activeBoardId, hist.snapshot());
-    await hist.load(contents.get(s.activeBoardId) ?? '{"objects":[]}');
-    hist.reset();
+    stopEditing();
+    contents.set(prev.activeBoardId, history.snapshot());
+    await history.load(contents.get(s.activeBoardId) ?? '{"objects":[]}');
+    history.reset();
     resetView();
   });
 
   return () => {
     window.removeEventListener("keydown", onKeyDown);
     unsubscribe();
-    if (activeCanvas === canvas) {
-      activeCanvas = null;
-      history = null;
+    if (session.canvas === canvas) {
+      session.canvas = null;
+      session.history = null;
     }
   };
 }
