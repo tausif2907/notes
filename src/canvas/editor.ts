@@ -21,6 +21,7 @@ import { flushSave, scheduleSave } from "./autosave";
 import { croppingImage, finishCrop, onCropChange, startCrop } from "./crop";
 import { History } from "./history";
 import { NoteImage } from "./noteImage";
+import { openPdf } from "./pdfImport";
 import { NOTE_PRESETS, NoteText, type NoteKind } from "./noteText";
 import { session } from "./session";
 import { keepInside } from "./sheet";
@@ -465,9 +466,15 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     host.classList.remove("drop-target");
     if (!hasFiles(e)) return;
     e.preventDefault();
+    // A dropped StickyBoard PDF opens as its own board.
+    const pdf = [...e.dataTransfer!.files].find((f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+    if (pdf) {
+      void pdf.arrayBuffer().then((buffer) => openPdf(new Uint8Array(buffer)));
+      return;
+    }
     const files = imageFiles(e.dataTransfer!.files);
     if (files.length === 0) {
-      store().showNotice("Only image files can be dropped onto the board.");
+      store().showNotice("Only images and StickyBoard PDFs can be dropped onto the board.");
       return;
     }
     void insertImages(files, canvas.getScenePoint(e));

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { LayoutGrid, Plus, StickyNote } from "lucide-react";
+import { FileUp, LayoutGrid, Plus, StickyNote } from "lucide-react";
+import { openPdf } from "../canvas/pdfImport";
+import { PDF, openFile } from "../platform/files";
 import { useAppStore } from "../store/appStore";
 import { BackupControls } from "./BackupControls";
 import { BoardMenu } from "./BoardMenu";
@@ -15,6 +17,18 @@ export function Sidebar() {
   const updateBoard = useAppStore((s) => s.updateBoard);
   const setView = useAppStore((s) => s.setView);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  const openPdfFile = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const bytes = await openFile(PDF);
+      if (bytes) await openPdf(bytes);
+    } finally {
+      setOpening(false);
+    }
+  };
 
   return (
     <aside className="sidebar">
@@ -30,6 +44,15 @@ export function Sidebar() {
       <button className={`nav-link${view === "home" ? " active" : ""}`} onClick={() => setView("home")}>
         <LayoutGrid size={16} />
         All boards
+      </button>
+      <button
+        className="nav-link"
+        onClick={() => void openPdfFile()}
+        disabled={opening}
+        title="Open a PDF exported from StickyBoard and keep editing it"
+      >
+        <FileUp size={16} />
+        {opening ? "Opening PDF…" : "Open PDF"}
       </button>
 
       <div className="sidebar-heading">Boards</div>

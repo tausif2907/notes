@@ -1,7 +1,10 @@
 import { StaticCanvas } from "fabric";
 import { jsPDF } from "jspdf";
+import { createBackup } from "../db/backup";
+import { attachBoardData } from "../platform/pdfAttachment";
 import { PAPERS } from "../theme";
 import type { Board } from "../types/board";
+import { flushSave } from "./autosave";
 import { session } from "./session";
 import { PAGE_SIZES, SHEET_WIDTH, contentBottom, pageHeight, type PageSize } from "./sheet";
 
@@ -95,7 +98,10 @@ async function renderStrips(board: Board, options: ExportOptions, stripHeight: n
   }
 }
 
-/** The open board as a PDF, cut into pages from the top of the sheet down. */
+/**
+ * The open board as a PDF, cut into pages from the top of the sheet down.
+ * The board itself is attached too, so the PDF can be opened for editing.
+ */
 export async function exportPdf(board: Board, options: ExportOptions) {
   const size = PAGE_SIZES[options.pageSize];
   const pages = await renderStrips(
@@ -111,6 +117,8 @@ export async function exportPdf(board: Board, options: ExportOptions) {
     if (i > 0) pdf.addPage([size.width, size.height], "portrait");
     pdf.addImage(page.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, size.width, size.height);
   });
+  await flushSave();
+  attachBoardData(pdf, (await createBackup([board.id])).bytes);
   return { bytes: new Uint8Array(pdf.output("arraybuffer")), pages: pages.length };
 }
 

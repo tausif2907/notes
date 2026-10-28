@@ -61,6 +61,7 @@ The app icon is generated from `src-tauri/app-icon.svg` with `npx tauri icon src
 | Duplicate / delete a board | ⋯ menu next to the board in the sidebar or on All boards |
 | Find a board | All boards → search |
 | Export | Export in the header → PDF (A4 or Letter pages) or one long PNG, saved with the Windows Save dialog |
+| Open PDF | **Open PDF** in the sidebar, or drop the PDF onto the board, opens a PDF exported from StickyBoard as a new board you can keep editing. PDFs exported before this feature open with their pages as pictures to write over |
 | Back up / restore | Bottom of the sidebar; restoring adds the boards next to your existing ones |
 | Light / dark | Switch at the bottom of the sidebar (or match Windows) |
 | More room for the board | Hide the style panel with the button left of the zoom controls |

@@ -23,13 +23,18 @@ const blobToDataUrl = (blob: Blob) =>
     reader.readAsDataURL(blob);
   });
 
-/** Every board, its content and its images, as the bytes of a backup file. */
-export async function createBackup() {
-  const [boards, contents, assets] = await Promise.all([
-    db.boards.toArray(),
-    db.contents.toArray(),
-    db.assets.toArray(),
-  ]);
+/**
+ * Boards, their content and their images, as the bytes of a backup file.
+ * Without `boardIds`, every board is included.
+ */
+export async function createBackup(boardIds?: string[]) {
+  const present = <T,>(items: (T | undefined)[]) => items.filter((item): item is T => !!item);
+  const [boards, contents] = boardIds
+    ? await Promise.all([db.boards.bulkGet(boardIds).then(present), db.contents.bulkGet(boardIds).then(present)])
+    : await Promise.all([db.boards.toArray(), db.contents.toArray()]);
+  const assets = boardIds
+    ? present(await db.assets.bulkGet([...new Set(contents.flatMap((c) => c.assetIds))]))
+    : await db.assets.toArray();
   const backup: BackupFile = {
     app: BACKUP_APP,
     version: BACKUP_VERSION,
@@ -59,19 +64,28 @@ function parseBackup(bytes: Uint8Array): BackupFile {
   return data as BackupFile;
 }
 
+export interface RestoreOptions {
+  /** Added to the title of a board whose title is already used. */
+  suffix?: string;
+  /** Mark the boards as just created, so they show first in the list. */
+  asNew?: boolean;
+}
+
 /**
  * Adds the boards from a backup alongside the existing ones. Restored boards
  * get new ids, so nothing already here is ever overwritten.
  */
-export async function restoreBackup(bytes: Uint8Array) {
+export async function restoreBackup(bytes: Uint8Array, { suffix = "restored", asNew = false }: RestoreOptions = {}) {
   const backup = parseBackup(bytes);
+  const now = Date.now();
   const newIds = new Map(backup.boards.map((b) => [b.id, nanoid()]));
   const existingTitles = new Set((await db.boards.toArray()).map((b) => b.title));
 
   const boards: Board[] = backup.boards.map((b) => ({
     ...b,
     id: newIds.get(b.id)!,
-    title: existingTitles.has(b.title) ? `${b.title} (restored)` : b.title,
+    title: existingTitles.has(b.title) ? `${b.title} (${suffix})` : b.title,
+    ...(asNew && { createdAt: now, updatedAt: now }),
   }));
   const contents: BoardContent[] = backup.contents
     .filter((c) => newIds.has(c.boardId))
