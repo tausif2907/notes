@@ -1,6 +1,6 @@
 [package]
 name = "stickyboard"
-version = "1.0.0"
+version = "1.1.0"
 description = "Free-form sticky notes boards"
 authors = ["tausif2907"]
 edition = "2024"
