@@ -13,6 +13,8 @@ export class History {
   private busy = false;
   /** True while a snapshot is being loaded; changes then must not be recorded. */
   restoring = false;
+  /** Goes up by one each time a step is recorded. */
+  version = 0;
 
   constructor(
     private canvas: Canvas,
@@ -40,6 +42,7 @@ export class History {
     this.stack.push(json);
     if (this.stack.length > MAX_STEPS) this.stack.shift();
     this.index = this.stack.length - 1;
+    this.version++;
     this.notify();
     this.onCommit();
   }

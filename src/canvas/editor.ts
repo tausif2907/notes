@@ -18,19 +18,34 @@ import { useAppStore, type Tool } from "../store/appStore";
 import { EMOJI_FONT } from "../theme";
 import { prepareImageBlob, registerAsset } from "./assets";
 import { flushSave, scheduleSave } from "./autosave";
+import {
+  COPY_OFFSET,
+  copySelection,
+  hasClip,
+  imageSources,
+  isOwnClip,
+  isPrivateImageLink,
+  pasteClip,
+  placeCopy,
+} from "./clipboard";
 import { croppingImage, finishCrop, onCropChange, startCrop } from "./crop";
 import { History } from "./history";
 import { NoteImage } from "./noteImage";
 import { openPdf } from "./pdfImport";
 import { NOTE_PRESETS, NoteText, type NoteKind } from "./noteText";
 import { session } from "./session";
-import { keepInside } from "./sheet";
-import { publishSelection, toggleTextStyle } from "./styling";
+import { SHEET_WIDTH, keepInside } from "./sheet";
+import { publishSelection, setTextAlign, toggleTextStyle } from "./styling";
 import { ERASER_RADIUS, isPanning, resetView } from "./viewport";
 
 const ACCENT = "#6366f1";
-const DUPLICATE_OFFSET = 20;
 const MAX_NEW_IMAGE = 480;
+/** Gap between the sheet's side and items aligned to it. */
+const PAGE_PADDING = 40;
+
+const PRIVATE_IMAGE_HINT =
+  "That app only shared a private link to the picture, not the picture itself. " +
+  "Save or export the picture from that app and drag the file here, or take a screenshot (Windows+Shift+S) and paste it.";
 
 // Selection handles for every object on the board.
 Object.assign(InteractiveFabricObject.ownDefaults, {
@@ -57,6 +72,9 @@ function withAlpha(hex: string, alpha: number) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
+
+/** Typing becomes an undo step after this long without a keystroke. */
+const TYPING_PAUSE = 1000;
 
 const isEditingText = (obj: FabricObject | undefined): obj is IText =>
   obj instanceof IText && obj.isEditing;
@@ -86,7 +104,7 @@ export async function insertImages(files: Blob[], at?: Point) {
       const element = await util.loadImage(url);
       const image = new NoteImage(element, { assetId: id });
       image.scale(Math.min(1, maxSide / Math.max(image.width, image.height)));
-      const offset = i * DUPLICATE_OFFSET;
+      const offset = i * COPY_OFFSET;
       image.setPositionByOrigin(new Point(center.x + offset, center.y + offset), "center", "center");
       canvas.add(image);
       added.push(image);
@@ -146,6 +164,161 @@ function pickImages() {
   input.click();
 }
 
+/** What a paste carries, from a paste event or read from the clipboard. */
+interface Pasted {
+  html: string;
+  text: string;
+  images: Blob[];
+}
+
+/** Fetches the pictures named in copied HTML; ones that cannot be read are skipped. */
+async function fetchImages(html: string) {
+  const blobs = await Promise.all(
+    imageSources(html).map((src) =>
+      fetch(src)
+        .then((r) => (r.ok ? r.blob() : null))
+        .catch(() => null),
+    ),
+  );
+  return blobs.filter((b): b is Blob => !!b && b.type.startsWith("image/"));
+}
+
+/** Adds text as a new note, centred on a point (default: the view's centre). */
+function addTextNote(text: string, at?: Point) {
+  const canvas = session.canvas;
+  if (!canvas) return;
+  settle();
+  const note = new NoteText(text, NOTE_PRESETS.text);
+  note.setPositionByOrigin(at ?? canvas.getVpCenter(), "center", "center");
+  canvas.add(note);
+  canvas.setActiveObject(note);
+  canvas.requestRenderAll();
+  session.history?.record();
+}
+
+/**
+ * Adds pasted content: items copied on a board, pictures, or text as a
+ * new note. Pictures inside copied HTML (such as an image copied from a
+ * web page) are used only when there is no text.
+ */
+async function pasteContent({ html, text, images }: Pasted, at?: Point) {
+  if (isOwnClip(html)) return pasteClip(at);
+  if (images.length > 0) return insertImages(images, at);
+  if (!text.trim()) {
+    const fromHtml = html ? await fetchImages(html) : [];
+    if (fromHtml.length > 0) return insertImages(fromHtml, at);
+    return;
+  }
+  if (isPrivateImageLink(text)) {
+    useAppStore.getState().showNotice(PRIVATE_IMAGE_HINT);
+    return;
+  }
+  addTextNote(text.trim(), at);
+}
+
+/**
+ * Pastes from the right-click menu, at the clicked point. Reading the
+ * clipboard needs permission; without it, items copied here still paste.
+ */
+export async function pasteAt(at?: Point) {
+  const pasted: Pasted = { html: "", text: "", images: [] };
+  try {
+    for (const item of await navigator.clipboard.read()) {
+      for (const type of item.types) {
+        const blob = await item.getType(type);
+        if (type === "text/html") pasted.html = await blob.text();
+        else if (type === "text/plain") pasted.text = await blob.text();
+        else if (type.startsWith("image/")) pasted.images.push(blob);
+      }
+    }
+  } catch {
+    if (hasClip()) await pasteClip(at);
+    else useAppStore.getState().showNotice("Press Ctrl+V to paste from other apps.");
+    return;
+  }
+  await pasteContent(pasted, at);
+}
+
+/** Copy and cut from the right-click menu go through the same events as Ctrl+C and Ctrl+X. */
+export function copyFromMenu(cut = false) {
+  document.execCommand(cut ? "cut" : "copy");
+}
+
+/** Moves the selection to the left, middle or right of the sheet. */
+export function alignOnPage(side: "left" | "center" | "right") {
+  const canvas = session.canvas;
+  const active = canvas?.getActiveObject();
+  if (!canvas || !active) return;
+  const box = active.getBoundingRect();
+  const left =
+    side === "left"
+      ? PAGE_PADDING
+      : side === "right"
+        ? SHEET_WIDTH - PAGE_PADDING - box.width
+        : (SHEET_WIDTH - box.width) / 2;
+  active.set({ left: active.left + left - box.left });
+  active.setCoords();
+  canvas.fire("object:modified", { target: active });
+  canvas.requestRenderAll();
+}
+
+/** Text items line up their text; anything else moves on the sheet. */
+export function alignSelection(side: "left" | "center" | "right") {
+  const objects = session.canvas?.getActiveObjects() ?? [];
+  if (objects.length > 0 && objects.every((o) => o instanceof NoteText)) setTextAlign(side);
+  else alignOnPage(side);
+}
+
+/** Starts a caption under the selected image. An empty caption is removed again. */
+export function addCaption() {
+  const canvas = session.canvas;
+  const image = canvas?.getActiveObject();
+  if (!canvas || !(image instanceof NoteImage)) return;
+  const box = image.getBoundingRect();
+  const caption = new NoteText("", {
+    ...NOTE_PRESETS.text,
+    width: Math.max(box.width, 120),
+    textAlign: "center",
+    fontSize: 18,
+    fontStyle: "italic",
+  });
+  caption.set({ left: box.left + (box.width - caption.width) / 2, top: box.top + box.height + 8 });
+  canvas.add(caption);
+  canvas.setActiveObject(caption);
+  caption.enterEditing();
+  canvas.requestRenderAll();
+}
+
+/** Crops the selected image, from the right-click menu. */
+export function cropSelection() {
+  const image = session.canvas?.getActiveObject();
+  if (image instanceof NoteImage) startCrop(image);
+}
+
+/** Selects all the text in the note being typed in. */
+export function selectAllText() {
+  const active = session.canvas?.getActiveObject();
+  if (!isEditingText(active)) return;
+  active.selectAll();
+  active.hiddenTextarea?.setSelectionRange(0, active.text.length);
+  session.canvas?.requestRenderAll();
+}
+
+/** Pastes plain text where the cursor is in the note being typed in. */
+export async function pasteIntoText() {
+  const active = session.canvas?.getActiveObject();
+  if (!isEditingText(active) || !active.hiddenTextarea) return;
+  let text: string;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    useAppStore.getState().showNotice("Press Ctrl+V to paste.");
+    return;
+  }
+  active.hiddenTextarea.focus();
+  document.execCommand("insertText", false, text);
+}
+
 /** Creates an item at the pointer and starts typing in it. */
 function addNoteAt(canvas: Canvas, e: TPointerEvent, kind: NoteKind) {
   const p = canvas.getScenePoint(e);
@@ -187,18 +360,8 @@ export async function duplicateSelection() {
   const active = canvas?.getActiveObject();
   if (!canvas || !active) return;
   const copy = await active.clone();
-  canvas.discardActiveObject();
-  copy.set({ left: copy.left + DUPLICATE_OFFSET, top: copy.top + DUPLICATE_OFFSET });
-  if (copy instanceof ActiveSelection) {
-    copy.canvas = canvas;
-    copy.forEachObject((obj) => canvas.add(obj));
-    copy.setCoords();
-  } else {
-    canvas.add(copy);
-  }
-  canvas.setActiveObject(copy);
-  canvas.requestRenderAll();
-  session.history?.record();
+  copy.set({ left: copy.left + COPY_OFFSET, top: copy.top + COPY_OFFSET });
+  placeCopy(copy);
 }
 
 export function selectAll() {
@@ -248,8 +411,18 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   };
   void openBoard(store().activeBoardId);
 
-  // Typing is only an undo step once it finishes, but it is saved as you go.
-  canvas.on("text:changed", scheduleSave);
+  // Typing is saved as you go and becomes an undo step at each pause, so
+  // Ctrl+Z takes back the last burst of typing rather than the whole note.
+  let typingTimer: ReturnType<typeof setTimeout> | undefined;
+  let editStartVersion = 0;
+  canvas.on("text:changed", () => {
+    scheduleSave();
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      if (isEditingText(canvas.getActiveObject())) history.record();
+    }, TYPING_PAUSE);
+  });
+  canvas.on("text:editing:entered", () => (editStartVersion = history.version));
 
   // A click (not a drag-to-pan) with a create tool places a new item.
   // With the text tool, clicking existing text edits it instead.
@@ -288,6 +461,7 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   const stopCropListener = onCropChange(publishSelection);
 
   canvas.on("text:editing:exited", ({ target }) => {
+    clearTimeout(typingTimer);
     if (target.text.trim() === "") canvas.remove(target);
     history.record();
   });
@@ -374,6 +548,26 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     history.record();
   });
 
+  // Right-click: a menu for the clicked item (selecting it first), for the
+  // text being typed, or for the empty board.
+  canvas.on("contextmenu", ({ e, target }) => {
+    if (store().view !== "board" || !(e instanceof MouseEvent)) return;
+    const active = canvas.getActiveObject();
+    const at = canvas.getScenePoint(e);
+    let kind: "items" | "typing" | "board" = "board";
+    if (isEditingText(active) && target === active) {
+      kind = "typing";
+    } else if (target) {
+      if (target !== active && !canvas.getActiveObjects().includes(target)) {
+        settle();
+        canvas.setActiveObject(target);
+        canvas.requestRenderAll();
+      }
+      kind = "items";
+    }
+    store().openContextMenu({ kind, x: e.clientX, y: e.clientY, at: { x: at.x, y: at.y } });
+  });
+
   for (const event of [
     "selection:created",
     "selection:updated",
@@ -414,6 +608,16 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
       }
       return;
     }
+    // Undo while typing finishes the note first. If nothing was typed yet,
+    // that is all; otherwise the typing is taken back like any other change.
+    if (e.ctrlKey && (key === "z" || key === "y") && isEditingText(active)) {
+      e.preventDefault();
+      active.exitEditing();
+      const redoing = key === "y" || e.shiftKey;
+      if (redoing) void redo();
+      else if (history.version !== editStartVersion) void undo();
+      return;
+    }
     if (isTyping(e) || isEditingText(active)) return;
 
     if (e.ctrlKey && key === "z" && !e.shiftKey) void undo();
@@ -432,23 +636,21 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
     const data = e.clipboardData;
     if (!data || store().view !== "board") return;
     const images = imageFiles([...data.items].map((item) => item.getAsFile()));
-    if (images.length > 0) {
-      e.preventDefault();
-      void insertImages(images);
-      return;
-    }
-    if (isTyping(e) || isEditingText(canvas.getActiveObject())) return;
-    const text = data.getData("text/plain").trim();
-    if (!text) return;
+    // While typing, only pictures are taken over; text goes into the note or field.
+    if (images.length === 0 && (isTyping(e) || isEditingText(canvas.getActiveObject()))) return;
     e.preventDefault();
-    settle();
-    const note = new NoteText(text, NOTE_PRESETS.text);
-    note.setPositionByOrigin(canvas.getVpCenter(), "center", "center");
-    canvas.add(note);
-    canvas.setActiveObject(note);
-    canvas.requestRenderAll();
-    history.record();
+    void pasteContent({ html: data.getData("text/html"), text: data.getData("text/plain"), images });
   };
+  // Ctrl+C and Ctrl+X on selected items (text being typed copies as usual).
+  const onCopy = (e: ClipboardEvent) => {
+    if (store().view !== "board" || !e.clipboardData) return;
+    if (isTyping(e) || isEditingText(canvas.getActiveObject())) return;
+    if (!copySelection(e.clipboardData)) return;
+    e.preventDefault();
+    if (e.type === "cut") deleteSelection();
+  };
+  window.addEventListener("copy", onCopy);
+  window.addEventListener("cut", onCopy);
   window.addEventListener("paste", onPaste);
 
   // Dropping image files places them where they are dropped.
@@ -513,8 +715,11 @@ export function attachEditor(canvas: Canvas, host: HTMLElement) {
   }
 
   return () => {
+    clearTimeout(typingTimer);
     window.removeEventListener("keydown", onKeyDown);
     window.removeEventListener("paste", onPaste);
+    window.removeEventListener("copy", onCopy);
+    window.removeEventListener("cut", onCopy);
     host.removeEventListener("dragover", onDragOver);
     host.removeEventListener("dragleave", onDragLeave);
     host.removeEventListener("drop", onDrop);

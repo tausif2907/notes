@@ -1078,7 +1078,7 @@ kbd {
 /* Drop target and notices */
 
 .canvas-host.drop-target::after {
-  content: "Drop images to add them";
+  content: "Drop images or a StickyBoard PDF";
   position: absolute;
   inset: 12px;
   display: grid;
@@ -1139,4 +1139,82 @@ kbd {
   display: grid;
   place-items: center;
   height: 26px;
+}
+
+/* Right-click menu */
+
+.context-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 220px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+  user-select: none;
+}
+
+.context-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.context-item:hover,
+.context-item-wrap.has-submenu:hover > .context-item {
+  background: var(--hover);
+}
+
+.context-item .context-label {
+  flex: 1;
+}
+
+.context-item kbd {
+  margin-right: 4px;
+}
+
+.context-item svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.context-item.danger,
+.context-item.danger svg {
+  color: #d93025;
+}
+
+.context-separator {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--border);
+}
+
+.context-item-wrap {
+  position: relative;
+}
+
+/* Submenus open beside their item, on the left when there is no room on the right. */
+.context-menu.submenu {
+  display: none;
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 2px);
+  min-width: 190px;
+}
+
+.context-item-wrap.has-submenu:hover > .submenu,
+.context-item-wrap.has-submenu:focus-within > .submenu {
+  display: block;
+}
+
+.flip-submenus .context-menu.submenu {
+  left: auto;
+  right: calc(100% - 2px);
 }

@@ -52,10 +52,12 @@ The app icon is generated from `src-tauri/app-icon.svg` with `npx tauri icon src
 | Add images | Ctrl V (e.g. a Win+Shift+S screenshot), drag files onto the board, or the Image tool (I) |
 | Crop an image | Double-click it (or "Crop image" in the panel), drag the black handles, Enter to keep, Esc to cancel |
 | Paste text | Ctrl V on the board creates a text item |
+| Cut / copy / paste items | Ctrl X / Ctrl C / Ctrl V, also between boards. Other apps get a picture of the copied items (and their text) |
+| Right-click menu | On an item: cut, copy, paste, duplicate, align, caption and crop (images), front/back, delete. On the board: paste here, select all |
 | Finish editing / deselect | Esc |
 | Delete | Delete or Backspace |
 | Duplicate / select all | Ctrl D / Ctrl A |
-| Undo / redo | Ctrl Z / Ctrl Y (or Ctrl Shift Z) |
+| Undo / redo | Ctrl Z / Ctrl Y (or Ctrl Shift Z), also while typing: each pause in typing is one step |
 | New board | New board → pick blank or a template |
 | Rename a board | Click its title in the header, double-click it in the sidebar, or use its ⋯ menu |
 | Duplicate / delete a board | ⋯ menu next to the board in the sidebar or on All boards |

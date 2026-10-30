@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CanvasView } from "./canvas/CanvasView";
 import { BackgroundPicker } from "./components/BackgroundPicker";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { ContextMenu } from "./components/ContextMenu";
 import { ExportButton } from "./components/ExportDialog";
 import { HistoryControls } from "./components/HistoryControls";
 import { HomeView } from "./components/HomeView";
@@ -94,6 +95,7 @@ export default function App() {
         {view === "home" && <HomeView />}
       </main>
       <ConfirmDialog />
+      <ContextMenu />
       <TemplatePicker />
     </div>
   );

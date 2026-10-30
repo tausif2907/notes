@@ -19,6 +19,16 @@ export type Tool =
 
 export type DrawingTool = "pen" | "highlighter";
 
+/** A right-click menu: for selected items, for text being typed, or for the empty board. */
+export interface ContextMenuRequest {
+  kind: "items" | "typing" | "board";
+  /** Where it opens on screen. */
+  x: number;
+  y: number;
+  /** The clicked point on the board, where pasted items go. */
+  at: { x: number; y: number };
+}
+
 /** "system" follows the Windows light/dark setting. */
 export type ThemeChoice = "system" | "light" | "dark";
 
@@ -43,6 +53,7 @@ interface AppState {
   /** Short message shown briefly at the bottom of the board. */
   notice: { id: number; text: string } | null;
   confirm: ConfirmRequest | null;
+  contextMenu: ContextMenuRequest | null;
   drawing: Record<DrawingTool, { color: string; size: number }>;
   theme: ThemeChoice;
   setTheme: (theme: ThemeChoice) => void;
@@ -57,6 +68,8 @@ interface AppState {
   setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
   setSelection: (selection: SelectionInfo | null) => void;
   showNotice: (text: string) => void;
+  openContextMenu: (menu: ContextMenuRequest) => void;
+  closeContextMenu: () => void;
   clearNotice: (id: number) => void;
   askConfirm: (request: ConfirmRequest | null) => void;
   /** True while the "new board" template picker is open. */
@@ -129,6 +142,7 @@ export const useAppStore = create<AppState>((set, get) => {
     selection: null,
     notice: null,
     confirm: null,
+    contextMenu: null,
     showTemplates: false,
     setShowTemplates: (showTemplates) => set({ showTemplates }),
     theme: savedTheme(),
@@ -170,6 +184,8 @@ export const useAppStore = create<AppState>((set, get) => {
     setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
     setSelection: (selection) => set({ selection }),
     showNotice: (text) => set({ notice: { id: Date.now(), text } }),
+    openContextMenu: (contextMenu) => set({ contextMenu }),
+    closeContextMenu: () => set({ contextMenu: null }),
     clearNotice: (id) => set((s) => (s.notice?.id === id ? { notice: null } : {})),
     askConfirm: (confirm) => set({ confirm }),
 
